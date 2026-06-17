@@ -1,0 +1,87 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<style>
+  .media-library-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem; }
+  .media-library-card { background:var(--color-surface,#fff);border:1px solid var(--color-border,#e2e8f0);border-radius:10px;overflow:hidden; }
+  .media-library-thumb { aspect-ratio:16/10;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center; }
+  .media-library-thumb img { width:100%;height:100%;object-fit:cover; }
+  .media-placeholder { display:flex;flex-direction:column;align-items:center;gap:.35rem;color:#475569; }
+  .media-placeholder .icon { font-size:2rem; }
+  .media-placeholder span { font-size:.75rem; }
+  .media-library-info { padding:.75rem; }
+  .media-filename { font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.35rem; }
+  .media-meta { display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:.5rem; }
+  .media-actions { display:flex;gap:.35rem; }
+</style>
+
+<div class="page-header">
+  <h1>Oanvända mediafiler</h1>
+  <div class="header-actions">
+    <a href="/admin/media" class="btn btn-ghost">← Alla filer</a>
+  </div>
+</div>
+
+<% if (success) { %><div class="alert alert-success"><%= success %></div><% } %>
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<% if (assets.length === 0) { %>
+  <div class="card" style="text-align:center;padding:3rem">
+    <p style="font-size:1.5rem;margin-bottom:.5rem">✅</p>
+    <p style="color:var(--color-muted);font-size:.95rem">Inga oanvända mediafiler hittades. Bra jobbat!</p>
+  </div>
+<% } else { %>
+
+  <div class="card" style="margin-bottom:1.5rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+    <div style="flex:1">
+      <strong><%= assets.length %> oanvända fil<%= assets.length === 1 ? '' : 'er' %></strong>
+      <span style="font-size:.82rem;color:var(--color-muted);margin-left:.5rem">
+        — inte kopplade till något innehållsblock
+      </span>
+    </div>
+    <form method="POST" action="/admin/media/unused/delete-all" style="flex-shrink:0">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn btn-danger btn-sm"
+        onclick="return confirm('Radera alla <%= assets.length %> oanvända filer permanent?')">
+        🗑 Radera alla oanvända
+      </button>
+    </form>
+  </div>
+
+  <div class="media-library-grid">
+    <% assets.forEach(function(a) { %>
+    <div class="media-library-card">
+      <div class="media-library-thumb">
+        <% if (a.type === 'image') { %>
+          <img src="<%= a.url %>" alt="<%= a.alt_text || a.original_filename %>" loading="lazy" />
+        <% } else if (a.type === 'video') { %>
+          <div class="media-placeholder"><span class="icon">🎬</span><span>Video</span></div>
+        <% } else { %>
+          <div class="media-placeholder"><span class="icon">🔊</span><span>Ljud</span></div>
+        <% } %>
+      </div>
+      <div class="media-library-info">
+        <div class="media-filename" title="<%= a.original_filename %>"><%= a.original_filename %></div>
+        <% if (a.alt_text) { %>
+          <div style="font-size:.72rem;color:var(--color-muted);margin-bottom:.3rem;font-style:italic"><%= a.alt_text %></div>
+        <% } %>
+        <div class="media-meta">
+          <span class="badge <%= a.type === 'image' ? 'badge-green' : a.type === 'video' ? 'badge-blue' : 'badge-purple' %>"><%= a.type %></span>
+          <span style="font-size:.72rem;color:var(--color-muted)"><%= (a.file_size/1024).toFixed(0) %> KB</span>
+          <% if (a.width && a.height) { %><span style="font-size:.72rem;color:var(--color-muted)"><%= a.width %>×<%= a.height %></span><% } %>
+        </div>
+        <div class="media-actions">
+          <a href="<%= a.url %>" target="_blank" rel="noreferrer" class="btn btn-xs btn-ghost">Visa ↗</a>
+          <form method="POST" action="/admin/media/<%= a.id %>/delete" style="display:inline">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn btn-xs btn-danger"
+              onclick="return confirm('Radera filen permanent?')">Radera</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    <% }); %>
+  </div>
+
+<% } %>
+
+<%- include('../../partials/footer') %>

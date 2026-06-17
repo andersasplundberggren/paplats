@@ -1,0 +1,65 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Redaktörer — <%= assignment.title %></h1>
+  <div class="header-actions">
+    <a href="/admin/assignments/<%= assignment.id %>/places" class="btn btn-ghost">← Platser</a>
+  </div>
+</div>
+
+<div class="content-columns">
+  <div>
+    <div class="card">
+      <h2 class="card-title">Tilldelade redaktörer (<%= assigned.length %>)</h2>
+      <% if (assigned.length === 0) { %>
+        <p style="color:var(--color-muted);padding:1rem 0">Inga redaktörer tilldelade ännu.</p>
+      <% } else { %>
+        <table class="data-table">
+          <thead><tr><th>Namn</th><th>E-post</th><th></th></tr></thead>
+          <tbody>
+            <% assigned.forEach(a => { %>
+            <tr>
+              <td><%= a.name %></td>
+              <td style="color:var(--color-muted)"><%= a.email %></td>
+              <td>
+                <form method="POST" action="/admin/editors/<%= assignment.id %>/remove/<%= a.id %>" style="display:inline">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button type="submit" class="btn btn-sm btn-danger"
+                    onclick="return confirm('Ta bort <%= a.name %> från uppdraget?')">Ta bort</button>
+                </form>
+              </td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+  </div>
+
+  <div>
+    <div class="card">
+      <h2 class="card-title">Lägg till redaktör</h2>
+      <% if (available.length === 0) { %>
+        <p style="color:var(--color-muted)">Alla redaktörer är redan tilldelade, eller inga redaktörer finns.</p>
+        <p style="font-size:.8rem;color:var(--color-muted);margin-top:.5rem">
+          Skapa nya redaktörer via <a href="/superadmin/admins">Systemadmin → Admins</a>.
+        </p>
+      <% } else { %>
+        <form method="POST" action="/admin/editors/<%= assignment.id %>/add">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <div class="form-group">
+            <select name="admin_id" required style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px">
+              <option value="">— Välj redaktör —</option>
+              <% available.forEach(a => { %>
+                <option value="<%= a.id %>"><%= a.name %> (<%= a.email %>)</option>
+              <% }) %>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width:100%">Tilldela</button>
+        </form>
+      <% } %>
+    </div>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,206 @@
+<%- include('../../partials/header', { title, csrfToken, superAdminName }) %>
+
+<div class="page-header">
+  <h1>Administratörer</h1>
+</div>
+
+<div class="content-columns">
+  <div class="card">
+    <h2 class="card-title">Alla admins</h2>
+
+    <!-- Rollbeskrivning -->
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding:.75rem;background:var(--color-bg);border-radius:8px;font-size:.82rem">
+      <div><span class="badge badge-purple">Systemadmin</span> <span style="color:var(--color-muted)">Full åtkomst till hela plattformen</span></div>
+      <div><span class="badge badge-blue">Redaktör</span> <span style="color:var(--color-muted)">Kan skapa Upptäck-platser, samlingar och tipspromenader</span></div>
+      <div><span class="badge badge-orange">Arrangör</span> <span style="color:var(--color-muted)">Kan skapa tipspromenader (platser enbart bakom kod)</span></div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Namn</th><th>E-post</th><th>Roll</th><th>Klient</th><th>Discover</th><th>Tipspromenad</th><th>Åtgärder</th></tr>
+      </thead>
+      <tbody>
+        <% admins.forEach(a => { %>
+        <tr>
+          <td><strong><%= a.name %></strong></td>
+          <td><%= a.email %></td>
+          <td>
+            <span class="badge <%=
+              a.role === 'superadmin' ? 'badge-purple' :
+              a.role === 'redaktor'   ? 'badge-blue'   : 'badge-orange'
+            %>">
+              <%= a.role === 'superadmin' ? 'Systemadmin' : a.role === 'redaktor' ? 'Redaktör' : 'Arrangör' %>
+            </span>
+          </td>
+          <td><%= a.tenant_name || '—' %></td>
+          <td><%= a.can_create_discover_places ? '✅' : '—' %></td>
+          <td><%= a.can_create_trail_places    ? '✅' : '—' %></td>
+          <td class="action-cell">
+            <% if (a.role !== 'superadmin') { %>
+              <form method="POST" action="/superadmin/impersonate/<%= a.id %>" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-secondary">Logga in som</button>
+              </form>
+              <button class="btn btn-xs btn-ghost" onclick="showEdit(<%= a.id %>, '<%= a.name %>', '<%= a.role %>', '<%= a.tenant_id || '' %>', '<%= a.can_create_discover_places %>', '<%= a.can_create_trail_places %>')">Redigera</button>
+              <button class="btn btn-xs btn-ghost" onclick="showResetPw(<%= a.id %>, '<%= a.name %>')">Nytt lösenord</button>
+              <form method="POST" action="/superadmin/admins/<%= a.id %>/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-danger" onclick="return confirm('Radera <%= a.name %>?')">Radera</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Ny administratör</h2>
+    <form method="POST" action="/superadmin/admins">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Namn <span class="required">*</span></label>
+        <input type="text" name="name" required maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label>E-post <span class="required">*</span></label>
+        <input type="email" name="email" required />
+      </div>
+      <div class="form-group">
+        <label>Lösenord <span class="required">*</span> <span class="hint">minst 10 tecken</span></label>
+        <input type="password" name="password" required minlength="10" />
+      </div>
+      <div class="form-group">
+        <label>Roll <span class="required">*</span></label>
+        <select name="role" id="new-role" onchange="updateNewPerms(this.value)">
+          <option value="arrangör">Arrangör — tipspromenader</option>
+          <option value="redaktor">Redaktör — platser och tipspromenader</option>
+        </select>
+      </div>
+      <div class="form-group" id="new-perms" style="background:var(--color-bg);padding:.75rem;border-radius:8px;display:none">
+        <label style="font-weight:500;font-size:.85rem">Manuella permissions (åsidosätter roll)</label>
+        <div style="margin-top:.5rem">
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem">
+            <input type="checkbox" name="can_create_discover_places" value="1" id="new-discover" />
+            Kan skapa Upptäck-platser och samlingar
+          </label>
+          <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;margin-top:.3rem">
+            <input type="checkbox" name="can_create_trail_places" value="1" id="new-trail" checked />
+            Kan skapa tipspromenader
+          </label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Klient <span class="required">*</span></label>
+        <select name="tenant_id">
+          <option value="">— Välj klient —</option>
+          <% tenants.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Skapa</button>
+    </form>
+  </div>
+</div>
+
+<!-- Redigera admin modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--color-surface);border-radius:12px;padding:2rem;width:400px;max-width:90vw">
+    <h3 style="margin-bottom:1rem" id="edit-title">Redigera admin</h3>
+    <form method="POST" id="edit-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Roll</label>
+        <select name="role" id="edit-role" onchange="updateEditPerms(this.value)">
+          <option value="arrangör">Arrangör</option>
+          <option value="redaktor">Redaktör</option>
+        </select>
+      </div>
+      <div class="form-group" style="background:var(--color-bg);padding:.75rem;border-radius:8px">
+        <label style="font-weight:500;font-size:.85rem;display:block;margin-bottom:.5rem">Permissions</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem">
+          <input type="checkbox" name="can_create_discover_places" value="1" id="edit-discover" />
+          Kan skapa Upptäck-platser och samlingar
+        </label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-weight:400;font-size:.85rem;margin-top:.3rem">
+          <input type="checkbox" name="can_create_trail_places" value="1" id="edit-trail" />
+          Kan skapa tipspromenader
+        </label>
+      </div>
+      <div class="form-group">
+        <label>Klient</label>
+        <select name="tenant_id" id="edit-tenant">
+          <option value="">— Ingen —</option>
+          <% tenants.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Spara</button>
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lösenord modal -->
+<div id="reset-pw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--color-surface);border-radius:12px;padding:2rem;width:360px;max-width:90vw">
+    <h3 id="reset-pw-title" style="margin-bottom:1rem">Nytt lösenord</h3>
+    <form method="POST" id="reset-pw-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Nytt lösenord <span class="hint">minst 10 tecken</span></label>
+        <input type="password" name="password" required minlength="10" id="new-pw-input" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Spara</button>
+        <button type="button" class="btn btn-ghost" onclick="closeResetPw()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function updateNewPerms(role) {
+  var d = document.getElementById('new-discover');
+  var t = document.getElementById('new-trail');
+  if (role === 'redaktor') { d.checked = true; t.checked = true; }
+  else { d.checked = false; t.checked = true; }
+}
+function updateEditPerms(role) {
+  var d = document.getElementById('edit-discover');
+  var t = document.getElementById('edit-trail');
+  if (role === 'redaktor') { d.checked = true; t.checked = true; }
+  else { d.checked = false; t.checked = true; }
+}
+function showEdit(id, name, role, tenantId, discover, trail) {
+  document.getElementById('edit-title').textContent = 'Redigera ' + name;
+  document.getElementById('edit-form').action = '/superadmin/admins/' + id + '/update';
+  document.getElementById('edit-role').value    = role;
+  document.getElementById('edit-discover').checked = discover === '1';
+  document.getElementById('edit-trail').checked    = trail === '1';
+  var sel = document.getElementById('edit-tenant');
+  for (var i = 0; i < sel.options.length; i++) {
+    sel.options[i].selected = sel.options[i].value === String(tenantId);
+  }
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+function closeEdit() { document.getElementById('edit-modal').style.display = 'none'; }
+function showResetPw(id, name) {
+  document.getElementById('reset-pw-title').textContent = 'Nytt lösenord för ' + name;
+  document.getElementById('reset-pw-form').action = '/superadmin/admins/' + id + '/reset-password';
+  document.getElementById('new-pw-input').value = '';
+  document.getElementById('reset-pw-modal').style.display = 'flex';
+}
+function closeResetPw() { document.getElementById('reset-pw-modal').style.display = 'none'; }
+</script>
+
+  </div>
+</main>
+<script src="/static/admin/js/admin.js"></script>
+</body>
+</html>

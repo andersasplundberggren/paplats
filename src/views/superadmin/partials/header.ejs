@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> — GeoExp Superadmin</title>
+  <link rel="stylesheet" href="/static/admin/css/admin.css" />
+  <style>
+    .sa-nav { background: linear-gradient(90deg, #0d1b2a, #1a2d4a); border-bottom:1px solid rgba(255,255,255,0.08); }
+    .sa-nav .nav-brand a { color:#93c5fd; }
+    .sa-nav .nav-links a { color:rgba(255,255,255,0.65); }
+    .sa-nav .nav-links a:hover { background:rgba(255,255,255,0.08); color:#fff; }
+    .sa-badge-nav { background:rgba(37,99,235,0.35); color:#93c5fd; border:1px solid rgba(37,99,235,0.4);
+                    border-radius:99px; font-size:.68rem; font-weight:700; padding:.1rem .5rem; margin-left:.4rem; }
+    .sa-nav .btn-link { color:rgba(255,255,255,0.45); }
+    .sa-nav .btn-link:hover { color:#fff; }
+  </style>
+</head>
+<body>
+
+<nav class="admin-nav sa-nav">
+  <div class="nav-brand">
+    <a href="/superadmin/dashboard">GeoExp <span class="sa-badge-nav">SA</span></a>
+  </div>
+  <ul class="nav-links">
+    <li><a href="/superadmin/dashboard">Dashboard</a></li>
+    <li><a href="/superadmin/tenants">Klienter</a></li>
+    <li><a href="/superadmin/admins">Administratörer</a></li>
+  </ul>
+  <div class="nav-user">
+    <span style="color:rgba(255,255,255,0.5);font-size:.8rem"><%= locals.superAdminName || '' %></span>
+    <form method="POST" action="/superadmin/logout" style="display:inline;margin:0">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
+      <button type="submit" class="btn-link">Logga ut</button>
+    </form>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="container">
+    <% if (locals.success && success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (locals.error && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>

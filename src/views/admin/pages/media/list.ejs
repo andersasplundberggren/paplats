@@ -1,0 +1,117 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<style>
+  .media-toolbar { display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;margin-bottom:1.5rem; }
+  #media-search { flex:1;min-width:200px;max-width:320px;padding:.5rem .85rem;border:1px solid var(--color-border,#e2e8f0);border-radius:8px;font-size:.88rem; }
+  .media-filter-btns { display:flex;gap:.4rem;flex-wrap:wrap; }
+  .filter-btn { padding:.35rem .85rem;border-radius:999px;border:1px solid var(--color-border,#e2e8f0);background:none;font-size:.8rem;cursor:pointer;color:var(--color-muted,#64748b);transition:all .15s; }
+  .filter-btn.active,.filter-btn:hover { background:var(--color-primary,#3b82f6);border-color:var(--color-primary,#3b82f6);color:#fff; }
+  .media-count { font-size:.8rem;color:var(--color-muted,#64748b);margin-left:auto;white-space:nowrap; }
+  .media-library-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem; }
+  .media-library-card { background:var(--color-surface,#fff);border:1px solid var(--color-border,#e2e8f0);border-radius:10px;overflow:hidden;transition:box-shadow .15s,transform .15s; }
+  .media-library-card:hover { box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px); }
+  .media-library-card.hidden { display:none; }
+  .media-library-thumb { aspect-ratio:16/10;overflow:hidden;background:#0f172a;display:flex;align-items:center;justify-content:center; }
+  .media-library-thumb img { width:100%;height:100%;object-fit:cover; }
+  .media-placeholder { display:flex;flex-direction:column;align-items:center;gap:.35rem;color:#475569; }
+  .media-placeholder .icon { font-size:2rem; }
+  .media-placeholder span { font-size:.75rem; }
+  .media-library-info { padding:.75rem; }
+  .media-filename { font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:.35rem; }
+  .media-meta { display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;margin-bottom:.35rem; }
+  .media-usage { font-size:.73rem;color:var(--color-muted,#64748b);margin-bottom:.5rem; }
+  .media-actions { display:flex;gap:.35rem; }
+  .no-results { grid-column:1/-1;text-align:center;padding:3rem;color:var(--color-muted,#64748b);font-size:.9rem; }
+</style>
+
+<div class="page-header">
+  <h1>Media</h1>
+  <div class="header-actions">
+    <a href="/admin/media/unused" class="btn btn-ghost">Oanvända filer</a>
+    <a href="/admin/media/upload" class="btn btn-primary">+ Ladda upp</a>
+  </div>
+</div>
+
+<div class="media-toolbar">
+  <input type="text" id="media-search" placeholder="Sök filnamn eller alt-text…" oninput="filterMedia()" />
+  <div class="media-filter-btns">
+    <button class="filter-btn active" data-type="all" onclick="setType('all',this)">Alla</button>
+    <button class="filter-btn" data-type="image" onclick="setType('image',this)">Bilder</button>
+    <button class="filter-btn" data-type="video" onclick="setType('video',this)">Video</button>
+    <button class="filter-btn" data-type="audio" onclick="setType('audio',this)">Ljud</button>
+  </div>
+  <span class="media-count" id="media-count"><%= assets.length %> filer</span>
+</div>
+
+<% if (assets.length === 0) { %>
+  <div style="text-align:center;padding:3rem;color:var(--color-muted)">
+    <p style="margin-bottom:1rem">Inga mediafiler uppladdade ännu.</p>
+    <a href="/admin/media/upload" class="btn btn-primary">Ladda upp första filen</a>
+  </div>
+<% } else { %>
+  <div class="media-library-grid" id="media-grid">
+    <% assets.forEach(function(a) { %>
+      <div class="media-library-card"
+           data-type="<%= a.type %>"
+           data-name="<%= (a.original_filename || '').toLowerCase() %>"
+           data-alt="<%= (a.alt_text || '').toLowerCase() %>">
+        <div class="media-library-thumb">
+          <% if (a.type === 'image') { %>
+            <img src="<%= a.url %>" alt="<%= a.alt_text || a.original_filename %>" loading="lazy" />
+          <% } else if (a.type === 'video') { %>
+            <div class="media-placeholder"><span class="icon">🎬</span><span>Video</span></div>
+          <% } else { %>
+            <div class="media-placeholder"><span class="icon">🔊</span><span>Ljud</span></div>
+          <% } %>
+        </div>
+        <div class="media-library-info">
+          <div class="media-filename" title="<%= a.original_filename %>"><%= a.original_filename %></div>
+          <% if (a.alt_text) { %>
+            <div style="font-size:.72rem;color:var(--color-muted);margin-bottom:.3rem;font-style:italic"><%= a.alt_text %></div>
+          <% } %>
+          <div class="media-meta">
+            <span class="badge <%= a.type === 'image' ? 'badge-green' : a.type === 'video' ? 'badge-blue' : 'badge-purple' %>"><%= a.type %></span>
+            <span style="font-size:.72rem;color:var(--color-muted)"><%= (a.file_size/1024).toFixed(0) %> KB</span>
+            <% if (a.width && a.height) { %><span style="font-size:.72rem;color:var(--color-muted)"><%= a.width %>×<%= a.height %></span><% } %>
+          </div>
+          <div class="media-usage">Används i <strong><%= a.place_count %></strong> block · ID: <strong><%= a.id %></strong></div>
+          <div class="media-actions">
+            <a href="<%= a.url %>" target="_blank" rel="noreferrer" class="btn btn-xs btn-ghost">Visa ↗</a>
+            <form method="POST" action="/admin/media/<%= a.id %>/delete" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-xs btn-danger" onclick="return confirm('Radera filen?')">Radera</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    <% }); %>
+    <div class="no-results" id="no-results" style="display:none">Inga filer matchar sökningen.</div>
+  </div>
+<% } %>
+
+<script>
+var activeType = 'all';
+function setType(type, btn) {
+  activeType = type;
+  document.querySelectorAll('.filter-btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  filterMedia();
+}
+function filterMedia() {
+  var q = document.getElementById('media-search').value.toLowerCase().trim();
+  var cards = document.querySelectorAll('.media-library-card');
+  var visible = 0;
+  cards.forEach(function(card) {
+    var typeMatch = activeType === 'all' || card.dataset.type === activeType;
+    var textMatch = !q || (card.dataset.name||'').includes(q) || (card.dataset.alt||'').includes(q);
+    if (typeMatch && textMatch) { card.classList.remove('hidden'); visible++; }
+    else { card.classList.add('hidden'); }
+  });
+  var countEl = document.getElementById('media-count');
+  if (countEl) countEl.textContent = visible + ' filer';
+  var noRes = document.getElementById('no-results');
+  if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
+}
+</script>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,488 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<style>
+  .live-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+    padding: .75rem 1rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+  }
+
+  .live-search {
+    flex: 1;
+    min-width: 160px;
+    max-width: 280px;
+    padding: .4rem .75rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-size: .85rem;
+  }
+
+  .live-filter-btns {
+    display: flex;
+    gap: .35rem;
+  }
+
+  .live-filter-btn {
+    padding: .3rem .75rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    background: none;
+    font-size: .78rem;
+    cursor: pointer;
+    color: var(--color-muted);
+    transition: all .15s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .live-filter-btn.active,
+  .live-filter-btn:hover {
+    background: var(--color-primary);
+    border-color: var(--color-primary);
+    color: #fff;
+    text-decoration: none;
+  }
+
+  .live-status {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .78rem;
+    color: var(--color-muted);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+
+  .live-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #16a34a;
+    animation: pulse 2s infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: .3; }
+  }
+
+  .live-share {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: var(--radius);
+    margin-bottom: 1.5rem;
+    font-size: .82rem;
+    flex-wrap: wrap;
+  }
+
+  .live-share-url {
+    flex: 1;
+    min-width: 200px;
+    font-family: monospace;
+    font-size: .78rem;
+    color: var(--color-muted);
+    word-break: break-all;
+  }
+
+  .live-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  .live-table thead {
+    background: var(--color-bg);
+  }
+
+  .live-table th {
+    padding: .6rem 1rem;
+    text-align: left;
+    font-size: .75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: var(--color-muted);
+    border-bottom: 1px solid var(--color-border);
+    white-space: nowrap;
+  }
+
+  .live-table td {
+    padding: .65rem 1rem;
+    border-bottom: 1px solid var(--color-border);
+    font-size: .85rem;
+    vertical-align: middle;
+  }
+
+  .live-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  .live-table tbody tr:hover {
+    background: #fafaf8;
+  }
+
+  .progress-bar-wrap {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+
+  .progress-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--color-border);
+    border-radius: 999px;
+    overflow: hidden;
+    min-width: 60px;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 999px;
+    transition: width .4s;
+  }
+
+  .progress-label {
+    font-size: .75rem;
+    color: var(--color-muted);
+    white-space: nowrap;
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 600;
+  }
+
+  .status-active    { background: #dcfce7; color: #14532d; }
+  .status-completed { background: #dbeafe; color: #1e3a8a; }
+
+  .empty-live {
+    text-align: center;
+    padding: 3rem;
+    color: var(--color-muted);
+    font-size: .9rem;
+  }
+
+  .summary-row {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+  }
+
+  .summary-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    flex: 1;
+    min-width: 120px;
+    text-align: center;
+    box-shadow: var(--shadow);
+  }
+
+  .summary-number {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--color-primary);
+  }
+
+  .summary-label {
+    font-size: .75rem;
+    color: var(--color-muted);
+    margin-top: .2rem;
+  }
+</style>
+
+<div class="page-header">
+  <h1>
+    Live — <%= assignment.title %>
+    <% if (!isPublic) { %>
+      <span style="font-size:.75rem;font-weight:400;color:var(--color-muted);margin-left:.5rem">
+        Uppdateras automatiskt var 15:e sekund
+      </span>
+    <% } %>
+  </h1>
+  <% if (!isPublic) { %>
+  <div class="header-actions">
+    <a href="/admin/assignments/<%= assignment.id %>/results" class="btn btn-ghost">Fullständiga resultat →</a>
+    <a href="/admin/assignments/<%= assignment.id %>/places" class="btn btn-ghost">← Platser</a>
+  </div>
+  <% } %>
+</div>
+
+<!-- Dela-rad (alltid synlig) -->
+<div class="live-share">
+  <span style="font-weight:600;white-space:nowrap">🔗 Delbar länk:</span>
+  <span class="live-share-url" id="shareUrl"><%= publicUrl %></span>
+  <button type="button" class="btn btn-secondary btn-sm" onclick="copyShareUrl()">Kopiera länk</button>
+  <a href="<%= publicUrl %>" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">Öppna →</a>
+</div>
+
+<!-- Sammanfattning -->
+<div class="summary-row" id="summaryRow">
+  <%
+    const activeCount    = sessions.filter(s => !s.completed_at).length;
+    const completedCount = sessions.filter(s => !!s.completed_at).length;
+    const totalScore     = sessions.reduce((sum, s) => sum + (parseInt(s.total_score, 10) || 0), 0);
+  %>
+  <div class="summary-card">
+    <div class="summary-number" id="statTotal"><%= sessions.length %></div>
+    <div class="summary-label">Deltagare totalt</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-number" id="statActive" style="color:#16a34a"><%= activeCount %></div>
+    <div class="summary-label">Aktiva nu</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-number" id="statCompleted"><%= completedCount %></div>
+    <div class="summary-label">Avslutade</div>
+  </div>
+  <div class="summary-card">
+    <div class="summary-number" id="statScore"><%= totalScore %></div>
+    <div class="summary-label">Poäng totalt</div>
+  </div>
+</div>
+
+<!-- Toolbar: filter + status -->
+<div class="live-toolbar">
+  <input type="text" class="live-search" id="nameFilter"
+         placeholder="Sök namn…"
+         value="<%= filters.q %>"
+         oninput="applyClientFilter()" />
+
+  <div class="live-filter-btns">
+    <a href="?status=all&q=<%= encodeURIComponent(filters.q) %>"
+       class="live-filter-btn <%= filters.status === 'all' ? 'active' : '' %>">Alla</a>
+    <a href="?status=active&q=<%= encodeURIComponent(filters.q) %>"
+       class="live-filter-btn <%= filters.status === 'active' ? 'active' : '' %>">Aktiva</a>
+    <a href="?status=completed&q=<%= encodeURIComponent(filters.q) %>"
+       class="live-filter-btn <%= filters.status === 'completed' ? 'active' : '' %>">Avslutade</a>
+  </div>
+
+  <div class="live-status">
+    <span class="live-dot" id="liveDot"></span>
+    <span id="liveStatusText">Uppdaterades just nu</span>
+  </div>
+</div>
+
+<!-- Tabell -->
+<div style="overflow-x:auto">
+  <table class="live-table" id="liveTable">
+    <thead>
+      <tr>
+        <th>Namn</th>
+        <th>Status</th>
+        <th>Framsteg</th>
+        <th>Rätta svar</th>
+        <th>Poäng</th>
+        <th>Senaste aktivitet</th>
+        <th>Startad</th>
+      </tr>
+    </thead>
+    <tbody id="liveTableBody">
+      <% if (sessions.length === 0) { %>
+        <tr><td colspan="7" class="empty-live">Inga deltagare ännu.</td></tr>
+      <% } else { %>
+        <% sessions.forEach(s => { %>
+        <tr data-name="<%= (s.nickname || '').toLowerCase() %>"
+            data-status="<%= s.completed_at ? 'completed' : 'active' %>">
+          <td><strong><%= s.nickname || '—' %></strong></td>
+          <td>
+            <% if (s.completed_at) { %>
+              <span class="status-badge status-completed">Avslutad</span>
+            <% } else { %>
+              <span class="status-badge status-active">Aktiv</span>
+            <% } %>
+          </td>
+          <td>
+            <div class="progress-bar-wrap">
+              <div class="progress-bar-track">
+                <div class="progress-bar-fill"
+                     style="width:<%= place_count > 0 ? Math.round((s.visited_places / place_count) * 100) : 0 %>%"></div>
+              </div>
+              <span class="progress-label"><%= s.visited_places %> / <%= place_count %></span>
+            </div>
+          </td>
+          <td><%= s.correct_count || 0 %></td>
+          <td><strong><%= s.total_score || 0 %></strong></td>
+          <td style="font-size:.78rem;color:var(--color-muted)">
+            <% if (s.last_activity) { %>
+              <span data-ts="<%= new Date(s.last_activity).toISOString() %>"></span>
+            <% } else { %>—<% } %>
+          </td>
+          <td style="font-size:.78rem;color:var(--color-muted)">
+            <% if (s.started_at) { %>
+              <%= new Date(s.started_at).toLocaleString('sv-SE', { hour:'2-digit', minute:'2-digit' }) %>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      <% } %>
+    </tbody>
+  </table>
+</div>
+
+<script>
+// ─── Delbar länk ──────────────────────────────────────────────
+function copyShareUrl() {
+  const url = document.getElementById('shareUrl').textContent.trim();
+  navigator.clipboard.writeText(url).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '✓ Kopierad!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    prompt('Kopiera länken:', url);
+  });
+}
+
+// ─── Relativ tid ──────────────────────────────────────────────
+function formatRelative(isoString) {
+  if (!isoString) return '—';
+  const diff = Math.floor((Date.now() - new Date(isoString)) / 1000);
+  if (diff < 60)  return 'Just nu';
+  if (diff < 3600) return `${Math.floor(diff / 60)} min sedan`;
+  return `${Math.floor(diff / 3600)} tim sedan`;
+}
+
+function updateRelativeTimes() {
+  document.querySelectorAll('[data-ts]').forEach(el => {
+    el.textContent = formatRelative(el.dataset.ts);
+  });
+}
+updateRelativeTimes();
+setInterval(updateRelativeTimes, 30000);
+
+// ─── Klientfilter på namn (snabb, utan sidladdning) ───────────
+function applyClientFilter() {
+  const q = document.getElementById('nameFilter').value.toLowerCase();
+  document.querySelectorAll('#liveTableBody tr[data-name]').forEach(row => {
+    row.style.display = !q || row.dataset.name.includes(q) ? '' : 'none';
+  });
+}
+
+// ─── Live-polling ─────────────────────────────────────────────
+const POLL_INTERVAL = 15000; // 15 sekunder
+let countdown = POLL_INTERVAL / 1000;
+let countdownTimer = null;
+
+// Bygg data-URL beroende på om vi är i admin eller publik vy
+const isPublic = <%= isPublic ? 'true' : 'false' %>;
+const dataUrl  = isPublic
+  ? '<%= publicUrl %>/data?status=<%= filters.status %>&q=<%= encodeURIComponent(filters.q) %>'
+  : '/admin/assignments/<%= assignment.id %>/live-data?status=<%= filters.status %>&q=<%= encodeURIComponent(filters.q) %>';
+
+function updateStatusText(text) {
+  const el = document.getElementById('liveStatusText');
+  if (el) el.textContent = text;
+}
+
+function renderTable(sessions, place_count) {
+  const tbody = document.getElementById('liveTableBody');
+  if (!tbody) return;
+
+  if (sessions.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" class="empty-live">Inga deltagare ännu.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = sessions.map(s => {
+    const pct    = place_count > 0 ? Math.round((s.visited_places / place_count) * 100) : 0;
+    const status = s.completed_at ? 'completed' : 'active';
+    const badge  = s.completed_at
+      ? '<span class="status-badge status-completed">Avslutad</span>'
+      : '<span class="status-badge status-active">Aktiv</span>';
+    const startTime = s.started_at
+      ? new Date(s.started_at).toLocaleString('sv-SE', { hour: '2-digit', minute: '2-digit' })
+      : '';
+    const activityTs = s.last_activity
+      ? `<span data-ts="${new Date(s.last_activity).toISOString()}"></span>`
+      : '—';
+
+    return `
+      <tr data-name="${(s.nickname || '').toLowerCase()}" data-status="${status}">
+        <td><strong>${s.nickname || '—'}</strong></td>
+        <td>${badge}</td>
+        <td>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width:${pct}%"></div>
+            </div>
+            <span class="progress-label">${s.visited_places} / ${place_count}</span>
+          </div>
+        </td>
+        <td>${s.correct_count || 0}</td>
+        <td><strong>${s.total_score || 0}</strong></td>
+        <td style="font-size:.78rem;color:var(--color-muted)">${activityTs}</td>
+        <td style="font-size:.78rem;color:var(--color-muted)">${startTime}</td>
+      </tr>`;
+  }).join('');
+
+  updateRelativeTimes();
+  applyClientFilter();
+
+  // Uppdatera summering
+  const active    = sessions.filter(s => !s.completed_at).length;
+  const completed = sessions.filter(s => !!s.completed_at).length;
+  const score     = sessions.reduce((sum, s) => sum + (parseInt(s.total_score, 10) || 0), 0);
+  document.getElementById('statTotal').textContent     = sessions.length;
+  document.getElementById('statActive').textContent    = active;
+  document.getElementById('statCompleted').textContent = completed;
+  document.getElementById('statScore').textContent     = score;
+}
+
+async function pollLiveData() {
+  try {
+    const res  = await fetch(dataUrl);
+    const data = await res.json();
+    renderTable(data.sessions, data.place_count);
+    updateStatusText('Uppdaterades just nu');
+    countdown = POLL_INTERVAL / 1000;
+  } catch (e) {
+    updateStatusText('Kunde inte uppdatera — försöker igen…');
+  }
+}
+
+// Countdown-ticker
+function startCountdown() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdownTimer = setInterval(() => {
+    countdown--;
+    if (countdown <= 0) {
+      pollLiveData();
+      countdown = POLL_INTERVAL / 1000;
+    } else {
+      updateStatusText(`Uppdateras om ${countdown}s`);
+    }
+  }, 1000);
+}
+
+startCountdown();
+
+// Uppdatera direkt vid fokus (tab blir aktiv igen)
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) pollLiveData();
+});
+</script>
+
+<%- include('../../partials/footer') %>

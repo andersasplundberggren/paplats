@@ -1,0 +1,20 @@
+<%- include('./impersonation') %>
+<nav class="admin-nav">
+  <div class="nav-brand">
+    <a href="/admin/dashboard">GeoExp Admin</a>
+  </div>
+  <ul class="nav-links">
+    <li><a href="/admin/dashboard">Dashboard</a></li>
+    <li><a href="/admin/places">Places</a></li>
+    <li><a href="/admin/trails">Tipspromenader</a></li>
+    <li><a href="/admin/media">Media</a></li>
+    <li><a href="/admin/categories">Categories</a></li>
+  </ul>
+  <div class="nav-user">
+    <span><%= locals.adminName || '' %></span>
+    <form method="POST" action="/admin/logout" style="display:inline;margin:0">
+      <input type="hidden" name="_csrf" value="<%= typeof csrfToken !== 'undefined' ? csrfToken : '' %>" />
+      <button type="submit" class="btn-link">Logout</button>
+    </form>
+  </div>
+</nav>

@@ -1,0 +1,75 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Uppdrag</h1>
+  <div class="header-actions">
+    <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+      <a href="/admin/assignments/new" class="btn btn-primary">+ Nytt uppdrag</a>
+    <% } %>
+  </div>
+</div>
+
+<% if (assignments.length === 0) { %>
+  <div class="card" style="text-align:center;padding:3rem">
+    <p style="color:var(--color-muted);margin-bottom:1.5rem">Inga uppdrag skapade ännu.</p>
+    <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+      <a href="/admin/assignments/new" class="btn btn-primary">Skapa första uppdraget</a>
+    <% } %>
+  </div>
+<% } else { %>
+  <div style="display:grid;gap:1rem">
+    <% assignments.forEach(a => { %>
+    <div class="card" style="display:flex;align-items:center;gap:1.5rem;padding:1.25rem 1.5rem">
+      <!-- Typ-ikon -->
+      <div style="font-size:2rem;flex-shrink:0">
+        <% if (a.type === 'exploration') { %>🗺️
+        <% } else if (a.type === 'trail') { %>🚶
+        <% } else { %>🔍<% } %>
+      </div>
+
+      <!-- Info -->
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.3rem">
+          <strong style="font-size:1.05rem"><%= a.title %></strong>
+          <span class="badge <%= a.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+            <%= a.status === 'published' ? 'Publicerad' : 'Utkast' %>
+          </span>
+          <code style="font-size:.78rem;padding:.15rem .5rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:5px"><%= a.access_code %></code>
+        </div>
+        <div style="font-size:.8rem;color:var(--color-muted);display:flex;gap:1.25rem">
+          <span><%= a.type === 'exploration' ? 'Utforskning' : a.type === 'trail' ? 'Tipspromenad' : 'Gåta' %></span>
+          <span><%= a.place_count %> platser</span>
+          <span><%= a.session_count %> sessioner</span>
+          <% if (a.activation_starts_at || a.activation_ends_at) { %>
+            <span>
+              <% if (a.activation_starts_at) { %>Från <%= new Date(a.activation_starts_at).toLocaleDateString('sv-SE') %><% } %>
+              <% if (a.activation_ends_at) { %> till <%= new Date(a.activation_ends_at).toLocaleDateString('sv-SE') %><% } %>
+            </span>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Knappar -->
+      <div style="display:flex;gap:.5rem;flex-shrink:0">
+        <a href="/admin/assignments/<%= a.id %>/places" class="btn btn-primary btn-sm">
+          Platser →
+        </a>
+        <a href="/admin/assignments/<%= a.id %>/edit" class="btn btn-ghost btn-sm">
+          Redigera
+        </a>
+        <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+        <form method="POST" action="/admin/assignments/<%= a.id %>/copy" style="display:inline">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button type="submit" class="btn btn-ghost btn-sm"
+            onclick="return confirm('Kopiera uppdraget \\'<%= a.title %>\\' med alla platser och innehåll?')">
+            Kopiera
+          </button>
+        </form>
+        <% } %>
+      </div>
+    </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<%- include('../../partials/footer') %>

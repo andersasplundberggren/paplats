@@ -1,0 +1,27 @@
+{
+  "name": "På plats",
+  "short_name": "På plats",
+  "description": "Utforska platser och lås upp digitala upplevelser nära dig.",
+  "lang": "sv",
+  "start_url": "/app/pwa/",
+  "scope": "/app/pwa/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/app/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/app/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["travel", "education", "entertainment"]
+}

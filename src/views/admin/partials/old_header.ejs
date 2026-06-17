@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> — GeoExp Admin</title>
+  <link rel="stylesheet" href="/static/admin/css/admin.css" />
+</head>
+<body>
+<nav class="admin-nav">
+  <div class="nav-brand">
+    <a href="/admin/dashboard">GeoExp Admin</a>
+  </div>
+  <ul class="nav-links">
+    <li><a href="/admin/dashboard">Dashboard</a></li>
+    <li><a href="/admin/places">Places</a></li>
+    <li><a href="/admin/trails">Tipspromenader</a></li>
+    <li><a href="/admin/media">Media</a></li>
+    <li><a href="/admin/categories">Categories</a></li>
+  </ul>
+  <div class="nav-user">
+    <form method="POST" action="/admin/logout" style="display:inline;margin:0">
+      <% if (typeof csrfToken !== 'undefined') { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <% } %>
+      <button type="submit" class="btn-link">Log out</button>
+    </form>
+  </div>
+</nav>
+<main class="main-content">
+  <div class="container">
+    <% if (locals.success && success) { %>
+      <div class="alert alert-success"><%= success %></div>
+    <% } %>
+    <% if (locals.error && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>

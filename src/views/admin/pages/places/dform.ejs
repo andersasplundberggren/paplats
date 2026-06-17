@@ -1,0 +1,176 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= place ? 'Redigera plats' : 'Ny plats' %></h1>
+  <div class="header-actions">
+    <a href="/admin/places" class="btn btn-ghost">← Alla platser</a>
+    <% if (place) { %>
+      <a href="/admin/places/<%= place.id %>/media" class="btn btn-secondary">Hantera media</a>
+    <% } %>
+  </div>
+</div>
+
+<form method="POST" action="<%= place ? '/admin/places/' + place.id : '/admin/places' %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <div class="content-columns">
+
+    <div>
+      <!-- Grundinfo -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Grundinformation</h2>
+        <div class="form-group">
+          <label>Titel <span class="required">*</span></label>
+          <input type="text" name="title" value="<%= (place && place.title) || (formData && formData.title) || '' %>" required maxlength="255" />
+        </div>
+        <div class="form-group">
+          <label>Slug <span class="hint">auto-genereras om tomt</span></label>
+          <input type="text" name="slug" value="<%= (place && place.slug) || '' %>" maxlength="255" />
+        </div>
+        <div class="form-group">
+          <label>Kort beskrivning</label>
+          <input type="text" name="short_description" maxlength="500"
+                 value="<%= (place && place.short_description) || '' %>" />
+        </div>
+        <div class="form-group">
+          <label>Lång beskrivning</label>
+          <textarea name="long_description" rows="5"><%= (place && place.long_description) || '' %></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Kategori</label>
+            <select name="category_id">
+              <option value="">— Ingen —</option>
+              <% if (categories) { categories.forEach(cat => { %>
+                <option value="<%= cat.id %>"
+                  <%= place && place.category_id === cat.id ? 'selected' : '' %>>
+                  <%= cat.name %>
+                </option>
+              <% }) } %>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Sorteringsordning</label>
+            <input type="number" name="sort_order" value="<%= (place && place.sort_order) || 0 %>" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Koordinater -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Koordinater och aktivering</h2>
+
+        <%# Instruktion för hur man hämtar koordinater %>
+        <div style="background:var(--color-bg,#f8fafc);border:1px solid var(--color-border,#e2e8f0);border-radius:8px;padding:.85rem 1rem;margin-bottom:1.25rem;font-size:.82rem;line-height:1.6;color:var(--color-muted,#64748b)">
+          <strong style="color:var(--color-text,#1e293b)">Hur hämtar du koordinater?</strong><br>
+          Gå till <a href="https://maps.google.com" target="_blank" rel="noopener" style="color:var(--color-primary,#3b82f6)">maps.google.com</a>,
+          högerklicka på platsen och klicka på koordinaterna överst i menyn — de kopieras automatiskt.<br>
+          Formatet ska vara t.ex. <code style="background:#e2e8f0;padding:1px 5px;border-radius:3px">59.3254</code> och <code style="background:#e2e8f0;padding:1px 5px;border-radius:3px">15.4421</code> — alltid med punkt (.) som decimaltecken.
+          Latitud för Sverige: 55–69 &nbsp;|&nbsp; Longitud: 10–25
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Latitud <span class="required">*</span></label>
+            <%
+              const latVal = (place && place.latitude != null)
+                ? place.latitude
+                : (formData && formData.latitude != null ? formData.latitude : '');
+            %>
+            <%# step="any" — tar bort browsers steg-validering som annars ger felmeddelande %>
+            <input type="number" name="latitude"
+                   step="any" min="55" max="69" required
+                   value="<%= latVal %>"
+                   placeholder="T.ex. 59.325399" />
+          </div>
+          <div class="form-group">
+            <label>Longitud <span class="required">*</span></label>
+            <%
+              const lngVal = (place && place.longitude != null)
+                ? place.longitude
+                : (formData && formData.longitude != null ? formData.longitude : '');
+            %>
+            <input type="number" name="longitude"
+                   step="any" min="10" max="25" required
+                   value="<%= lngVal %>"
+                   placeholder="T.ex. 15.442078" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Aktiveringsradie (meter)</label>
+            <input type="number" name="activation_radius_meters" min="1" max="10000"
+                   value="<%= (place && place.activation_radius_meters) || 50 %>" />
+          </div>
+          <div class="form-group">
+            <label>Önskad avstånd (meter) <span class="hint">valfritt</span></label>
+            <input type="number" name="preferred_distance_meters" min="1"
+                   value="<%= (place && place.preferred_distance_meters) || '' %>" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Önskad riktning (grader) <span class="hint">0–360, valfritt</span></label>
+          <input type="number" name="preferred_bearing_degrees" min="0" max="360" step="1"
+                 value="<%= (place && place.preferred_bearing_degrees) || '' %>"
+                 placeholder="T.ex. 90 = öst, 180 = söder, 270 = väster" />
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <!-- Status och synlighet -->
+      <div class="card" style="margin-bottom:1rem">
+        <h2 class="card-title">Status och synlighet</h2>
+
+        <div class="form-group">
+          <label>Status</label>
+          <select name="status">
+            <option value="draft"     <%= !place || place.status !== 'published' ? 'selected' : '' %>>Draft</option>
+            <option value="published" <%=  place && place.status === 'published'  ? 'selected' : '' %>>Publicerad</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Synlighet <span class="required">*</span></label>
+          <select name="visibility">
+            <option value="discover"   <%= !place || place.visibility !== 'trail_only' ? 'selected' : '' %>>
+              Upptäck — syns på kartan med kod
+            </option>
+            <option value="trail_only" <%=  place && place.visibility === 'trail_only'  ? 'selected' : '' %>>
+              Tipspromenad — syns bara bakom tipspromenadkod
+            </option>
+          </select>
+          <p style="font-size:.75rem;color:var(--color-muted);margin-top:.3rem">
+            <strong>Upptäck:</strong> Kan läggas i en samling och syns på kartan.<br>
+            <strong>Tipspromenad:</strong> Syns enbart när användaren kör en tipspromenad.
+          </p>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%">
+          <%= place ? 'Spara ändringar' : 'Skapa plats' %>
+        </button>
+
+        <% if (place) { %>
+          <form method="POST" action="/admin/places/<%= place.id %>/delete" style="margin-top:.5rem">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn btn-danger" style="width:100%"
+              onclick="return confirm('Radera platsen permanent?')">Radera plats</button>
+          </form>
+        <% } %>
+      </div>
+
+      <% if (place) { %>
+      <div class="card">
+        <h2 class="card-title">Media</h2>
+        <a href="/admin/places/<%= place.id %>/media" class="btn btn-secondary" style="width:100%">
+          Hantera media för denna plats
+        </a>
+      </div>
+      <% } %>
+    </div>
+
+  </div>
+</form>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,24 @@
+{
+  "name": "På Plats",
+  "short_name": "På Plats",
+  "description": "Platsbaserade digitala upplevelser i webbläsaren.",
+  "lang": "sv",
+  "dir": "ltr",
+  "start_url": "/app/test/",
+  "scope": "/app/test/",
+  "display": "standalone",
+  "background_color": "#F5F1EA",
+  "theme_color": "#F5F1EA",
+  "icons": [
+    {
+      "src": "/app/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/app/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -1,0 +1,314 @@
+<%
+  const isEdit  = place !== null;
+  const fd      = (formData && Object.keys(formData).length) ? formData : (place || {});
+  const val     = (key) => fd[key] !== null && fd[key] !== undefined ? fd[key] : '';
+
+  // Helper: badge color per usage type
+  const usageBadge = (t) => t === 'ar_overlay' ? 'badge-purple' : t === 'hero' ? 'badge-orange' : 'badge-blue';
+  const typeBadge  = (t) => t === 'audio' ? 'badge-green' : t === 'video' ? 'badge-purple' : 'badge-blue';
+%>
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= isEdit ? 'Redigera plats' : 'Ny plats' %></h1>
+  <% if (isEdit) { %>
+    <div class="header-actions">
+      <a href="/admin/places/<%= place.id %>" class="btn btn-ghost">Förhandsgranska</a>
+      <form method="POST" action="/admin/places/<%= place.id %>/publish" style="display:inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn <%= place.status === 'published' ? 'btn-ghost' : 'btn-primary' %>">
+          <%= place.status === 'published' ? 'Avpublicera' : 'Publicera' %>
+        </button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<!-- ======================== PLATS-FORMULÄR ======================== -->
+<form method="POST" action="<%= isEdit ? '/admin/places/' + place.id : '/admin/places' %>" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <section class="form-section">
+    <h2 class="section-title">Grundinfo</h2>
+
+    <div class="form-group">
+      <label for="title">Titel <span class="required">*</span></label>
+      <input type="text" id="title" name="title" value="<%= val('title') %>" required maxlength="255" />
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="status">Status <span class="required">*</span>
+          <span class="hint">Draft = syns ej i appen. Published = synlig för alla.</span>
+        </label>
+        <select id="status" name="status">
+          <option value="draft"     <%= val('status') !== 'published' ? 'selected' : '' %>>Draft (ej synlig)</option>
+          <option value="published" <%= val('status') === 'published' ? 'selected' : '' %>>Published (synlig)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="category_id">Kategori</label>
+        <select id="category_id" name="category_id">
+          <option value="">— Ingen —</option>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat.id %>" <%= val('category_id') == cat.id ? 'selected' : '' %>><%= cat.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="sort_order">Sorteringsordning
+          <span class="hint">Lägre nummer visas först i appen.</span>
+        </label>
+        <input type="number" id="sort_order" name="sort_order" value="<%= val('sort_order') || 0 %>" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="short_description">Kort beskrivning
+        <span class="hint">Visas i platsens kortvy på kartan och i listan.</span>
+      </label>
+      <textarea id="short_description" name="short_description" rows="2"><%= val('short_description') %></textarea>
+    </div>
+
+    <div class="form-group">
+      <label for="long_description">Lång beskrivning
+        <span class="hint">Visas i detaljvyn när användaren öppnar platsen.</span>
+      </label>
+      <textarea id="long_description" name="long_description" rows="6"><%= val('long_description') %></textarea>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2 class="section-title">Plats & GPS</h2>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="latitude">Latitud <span class="required">*</span>
+          <span class="hint">Hitta koordinater på OpenStreetMap (högerklicka → Visa adress).</span>
+        </label>
+        <input type="number" id="latitude" name="latitude" step="0.00000001"
+               value="<%= val('latitude') %>" required min="-90" max="90" />
+      </div>
+      <div class="form-group">
+        <label for="longitude">Longitud <span class="required">*</span></label>
+        <input type="number" id="longitude" name="longitude" step="0.00000001"
+               value="<%= val('longitude') %>" required min="-180" max="180" />
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="activation_radius_meters">Aktiveringsradie (m) <span class="required">*</span>
+          <span class="hint">Hur nära användaren måste vara för att låsa upp platsen. 20–50 m fungerar bra inomhus/tätt, 100–200 m för öppna ytor.</span>
+        </label>
+        <input type="number" id="activation_radius_meters" name="activation_radius_meters"
+               value="<%= val('activation_radius_meters') || 50 %>" required min="1" max="10000" />
+      </div>
+      <div class="form-group">
+        <label for="preferred_distance_meters">Idealavstånd (m)
+          <span class="hint">Rekommenderat avstånd för bästa AR-upplevelse. Valfritt.</span>
+        </label>
+        <input type="number" id="preferred_distance_meters" name="preferred_distance_meters"
+               value="<%= val('preferred_distance_meters') %>" min="1" />
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="preferred_bearing_degrees">Föredragen riktning (°)
+        <span class="hint">Kompassriktning (0–360) som användaren ska vända sig mot för AR. 0=Norr, 90=Öster, 180=Söder, 270=Väster. Lämna tomt om riktning inte spelar roll.</span>
+      </label>
+      <input type="number" id="preferred_bearing_degrees" name="preferred_bearing_degrees"
+             step="0.01" value="<%= val('preferred_bearing_degrees') %>" min="0" max="360"
+             placeholder="t.ex. 270 = västerut" />
+    </div>
+
+    <% if (isEdit) { %>
+      <a href="https://www.openstreetmap.org/?mlat=<%= place.latitude %>&mlon=<%= place.longitude %>#map=17/<%= place.latitude %>/<%= place.longitude %>"
+         target="_blank" rel="noreferrer" class="btn btn-ghost btn-sm">Visa på OpenStreetMap ↗</a>
+    <% } %>
+  </section>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary"><%= isEdit ? 'Spara ändringar' : 'Skapa plats' %></button>
+    <a href="/admin/places" class="btn btn-ghost">Avbryt</a>
+    <% if (isEdit) { %>
+      <button type="button" class="btn btn-danger btn-right"
+        onclick="confirmDelete('/admin/places/<%= place.id %>/delete', '<%= place.title.replace(/'/g, '\\\'') %>', this)">
+        Radera plats
+      </button>
+    <% } %>
+  </div>
+</form>
+
+<!-- ======================== MEDIAHANTERING ======================== -->
+<% if (isEdit) { %>
+<div class="card" style="margin-top:2rem">
+
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--color-border)">
+    <h2 style="font-size:1rem;font-weight:600;margin:0">Media kopplat till platsen (<%= place.media.length %>)</h2>
+    <a href="/admin/media/upload" target="_blank" class="btn btn-secondary btn-sm">+ Ladda upp ny mediafil ↗</a>
+  </div>
+
+  <!-- Förklaring av mediatyper -->
+  <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.25rem;padding:.75rem;background:var(--color-bg);border-radius:8px;font-size:.82rem">
+    <div>
+      <span class="badge badge-orange">hero</span>
+      <span style="margin-left:.4rem;color:var(--color-muted)">Profilbild — visas som thumbnail på kartan och i listan</span>
+    </div>
+    <div>
+      <span class="badge badge-purple">ar_overlay</span>
+      <span style="margin-left:.4rem;color:var(--color-muted)">AR-upplevelse — bild, video eller ljud som visas/spelas när användaren startar AR</span>
+    </div>
+    <div>
+      <span class="badge badge-blue">gallery</span>
+      <span style="margin-left:.4rem;color:var(--color-muted)">Galleri — visas i detaljvyn under beskrivningen. Ljud visas med en spelare.</span>
+    </div>
+  </div>
+
+  <% if (place.media.length === 0) { %>
+    <p class="text-muted">Ingen media kopplad ännu. Ladda upp filer i Mediabiblioteket och koppla dem här med deras ID.</p>
+  <% } else { %>
+    <div class="media-grid">
+      <% place.media.forEach(m => { %>
+      <div class="media-thumb-card">
+
+        <!-- Miniatyrbild -->
+        <% if (m.type === 'image') { %>
+          <img src="<%= mediaBaseUrl %>/<%= m.stored_path %>"
+               alt="<%= m.alt_text || m.original_filename %>" class="media-thumb" />
+        <% } else if (m.type === 'audio') { %>
+          <div class="media-thumb" style="background:#1a1a18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4rem">
+            <span style="font-size:2rem;color:#fff">♪</span>
+            <span style="font-size:.72rem;color:#aaa;text-align:center;padding:0 .25rem;word-break:break-all">
+              <%= m.original_filename.length > 22 ? m.original_filename.substring(0,20)+'…' : m.original_filename %>
+            </span>
+          </div>
+        <% } else { %>
+          <div class="media-thumb video-placeholder">▶ Video</div>
+        <% } %>
+
+        <!-- Typ-badges -->
+        <div class="media-thumb-meta">
+          <span class="badge <%= usageBadge(m.usage_type) %>"><%= m.usage_type %></span>
+          <span class="badge <%= typeBadge(m.type) %>"><%= m.type %></span>
+          <span class="text-muted" style="font-size:.72rem">ID: <%= m.id %></span>
+        </div>
+
+        <!-- Redigeringsformulär -->
+        <form method="POST" action="/admin/places/<%= place.id %>/media/<%= m.pm_id %>/order" style="margin-top:.5rem">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+          <div style="margin-bottom:.35rem">
+            <label style="font-size:.75rem;color:var(--color-muted)">Användning</label>
+            <select name="usage_type" class="input-select input-select-sm" style="width:100%">
+              <option value="gallery"    <%= m.usage_type === 'gallery'    ? 'selected' : '' %>>gallery — i galleri/detaljvy</option>
+              <option value="hero"       <%= m.usage_type === 'hero'       ? 'selected' : '' %>>hero — profilbild på kartan</option>
+              <option value="ar_overlay" <%= m.usage_type === 'ar_overlay' ? 'selected' : '' %>>ar_overlay — AR-upplevelse</option>
+            </select>
+          </div>
+
+          <div style="display:flex;gap:.35rem;margin-bottom:.35rem">
+            <div style="flex:1">
+              <label style="font-size:.75rem;color:var(--color-muted)">Ordning
+                <span style="font-weight:400"> (lägst visas först)</span>
+              </label>
+              <input type="number" name="display_order" value="<%= m.display_order %>"
+                     class="input-text input-text-sm" style="width:100%" />
+            </div>
+            <div style="flex:1">
+              <label style="font-size:.75rem;color:var(--color-muted)">Opacitet
+                <span style="font-weight:400"> (0=genomskinlig, 1=hel)</span>
+              </label>
+              <input type="number" name="opacity_default" value="<%= m.opacity_default %>"
+                     step="0.05" min="0" max="1" class="input-text input-text-sm" style="width:100%" />
+            </div>
+          </div>
+
+          <% if (m.type === 'image') { %>
+          <div style="margin-bottom:.35rem">
+            <label style="font-size:.75rem;color:var(--color-muted)">Rotation (för AR-bilder)</label>
+            <select name="display_rotation" class="input-select input-select-sm" style="width:100%">
+              <option value="0"   <%= (!m.display_rotation || m.display_rotation == 0)  ? 'selected' : '' %>>0° — liggande (standard)</option>
+              <option value="90"  <%= m.display_rotation == 90  ? 'selected' : '' %>>90° — stående</option>
+              <option value="-90" <%= m.display_rotation == -90 ? 'selected' : '' %>>-90° — stående (omvänt)</option>
+              <option value="180" <%= m.display_rotation == 180 ? 'selected' : '' %>>180° — upp-och-ned</option>
+            </select>
+          </div>
+          <% } else { %>
+            <input type="hidden" name="display_rotation" value="<%= m.display_rotation || 0 %>" />
+          <% } %>
+
+          <button type="submit" class="btn btn-xs btn-secondary" style="width:100%">Spara ändringar</button>
+        </form>
+
+        <!-- Ta bort koppling -->
+        <form method="POST" action="/admin/places/<%= place.id %>/media/<%= m.pm_id %>/delete" style="margin-top:4px">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button type="submit" class="btn btn-xs btn-danger" style="width:100%"
+            onclick="return confirm('Ta bort kopplingen för \'<%= m.original_filename.replace(/'/g,'\\\'') %>\'?\n\nFilen raderas inte — den finns kvar i mediabiblioteket.')">
+            Ta bort koppling
+          </button>
+        </form>
+
+      </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <!-- Koppla befintlig media -->
+  <details class="attach-media-details" style="margin-top:1.5rem">
+    <summary class="btn btn-secondary btn-sm">Koppla befintlig mediafil till platsen</summary>
+    <div style="margin-top:1rem;padding:.75rem;background:var(--color-bg);border-radius:8px;font-size:.82rem;color:var(--color-muted)">
+      Hitta mediefilens ID i <a href="/admin/media" target="_blank">Mediabiblioteket ↗</a> och fyll i det nedan.
+    </div>
+    <form method="POST" action="/admin/places/<%= place.id %>/media" class="attach-media-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-row" style="margin-top:.75rem">
+        <div class="form-group">
+          <label>Media-ID <span class="required">*</span>
+            <span class="hint">Hittas i Mediabiblioteket</span>
+          </label>
+          <input type="number" name="media_id" required min="1" placeholder="t.ex. 3" />
+        </div>
+        <div class="form-group">
+          <label>Användning
+            <span class="hint">hero=profilbild, ar_overlay=AR, gallery=detaljvy</span>
+          </label>
+          <select name="usage_type">
+            <option value="gallery">gallery</option>
+            <option value="hero">hero</option>
+            <option value="ar_overlay">ar_overlay</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ordning <span class="hint">0 = visas först</span></label>
+          <input type="number" name="display_order" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Opacitet <span class="hint">0–1, standard 1.0</span></label>
+          <input type="number" name="opacity_default" value="1.0" step="0.05" min="0" max="1" />
+        </div>
+        <div class="form-group">
+          <label>Rotation <span class="hint">Gäller bara bilder i AR</span></label>
+          <select name="display_rotation">
+            <option value="0">0° — liggande</option>
+            <option value="90">90° — stående</option>
+            <option value="-90">-90° — stående omvänt</option>
+            <option value="180">180° — upp-och-ned</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button type="submit" class="btn btn-primary btn-sm">Koppla</button>
+        <a href="/admin/media" class="btn btn-ghost btn-sm" target="_blank">Gå till mediabibliotek ↗</a>
+      </div>
+    </form>
+  </details>
+</div>
+<% } %>
+
+<form id="delete-form" method="POST" style="display:none">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+</form>
+
+<%- include('../../partials/footer') %>

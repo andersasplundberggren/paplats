@@ -1,0 +1,93 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= assignment.title %></h1>
+  <div class="header-actions">
+    <code style="padding:.3rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:6px;font-weight:700;letter-spacing:.08em">
+      <%= assignment.access_code %>
+    </code>
+    <span class="badge <%= assignment.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+      <%= assignment.status === 'published' ? 'Publicerad' : 'Utkast' %>
+    </span>
+    <a href="/admin/assignments/<%= assignment.id %>/edit" class="btn btn-ghost btn-sm">Redigera uppdrag</a>
+    <form method="POST" action="/admin/assignments/<%= assignment.id %>/publish" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn <%= assignment.status === 'published' ? 'btn-ghost' : 'btn-primary' %> btn-sm">
+        <%= assignment.status === 'published' ? 'Avpublicera' : 'Publicera' %>
+      </button>
+    </form>
+    <a href="/admin/assignments" class="btn btn-ghost btn-sm">← Alla uppdrag</a>
+  </div>
+</div>
+
+<div class="content-columns" style="grid-template-columns:1fr 340px;gap:2rem;align-items:start">
+
+  <!-- Platslista -->
+  <div>
+    <% if (places.length === 0) { %>
+      <div class="card" style="text-align:center;padding:2.5rem">
+        <p style="color:var(--color-muted);margin-bottom:1rem">Inga platser tillagda ännu.</p>
+        <p style="font-size:.82rem;color:var(--color-muted)">Använd formuläret till höger för att lägga till den första platsen.</p>
+      </div>
+    <% } else { %>
+      <% places.forEach(place => { %>
+      <div class="card" style="margin-bottom:1rem;padding:1.25rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem">
+          <div style="background:var(--color-primary);color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:.9rem">
+            <%= place.stop_order + 1 %>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">
+              <strong><%= place.title %></strong>
+              <span class="badge <%= place.status === 'published' ? 'badge-green' : 'badge-gray' %>" style="font-size:.68rem">
+                <%= place.status === 'published' ? 'Pub.' : 'Utkast' %>
+              </span>
+              <span style="font-size:.75rem;color:var(--color-muted)">
+                <%= place.block_count %> innehållsblock
+              </span>
+            </div>
+            <div style="font-size:.78rem;color:var(--color-muted)">
+              <%= parseFloat(place.latitude).toFixed(5) %>, <%= parseFloat(place.longitude).toFixed(5) %>
+              &nbsp;·&nbsp; Radie: <%= place.activation_radius_meters %> m
+            </div>
+            <% if (place.short_description) { %>
+              <p style="font-size:.82rem;margin:.4rem 0 0;color:var(--color-text)"><%= place.short_description %></p>
+            <% } %>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-shrink:0">
+            <a href="/admin/content/<%= place.id %>" class="btn btn-primary btn-sm">Innehåll</a>
+            <a href="/admin/places/<%= place.id %>/edit" class="btn btn-ghost btn-sm">Redigera</a>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <!-- Ny plats - formulär -->
+  <div style="position:sticky;top:1rem">
+    <div class="card">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1.25rem">Lägg till plats</h3>
+      <a href="/admin/places/new?assignmentId=<%= assignment.id %>"
+         class="btn btn-primary" style="width:100%;text-align:center;display:block">
+        + Ny plats med karta
+      </a>
+      <p style="font-size:.75rem;color:var(--color-muted);margin-top:.75rem;text-align:center">
+        Öppnar formuläret med inbyggd kartväljare
+      </p>
+    </div>
+
+    <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+    <div class="card" style="margin-top:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1rem">Redaktörer</h3>
+      <a href="/admin/editors/<%= assignment.id %>"
+         class="btn btn-ghost" style="width:100%;text-align:center;display:block">
+        Tilldela redaktörer →
+      </a>
+    </div>
+    <% } %>
+  </div>
+
+</div>
+
+<%- include('../../partials/footer') %>

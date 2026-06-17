@@ -1,0 +1,67 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Resultat — <%= trail.title %></h1>
+  <div class="header-actions">
+    <a href="/admin/trails/<%= trail.id %>/stops" class="btn btn-ghost">← Tillbaka</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2 class="card-title">Resultatlänk</h2>
+  <p style="font-size:.85rem;color:var(--color-muted);margin-bottom:.75rem">
+    Denna länk kan delas med arrangörer som vill se insamlade svar utan att logga in.
+  </p>
+  <div style="display:flex;gap:.5rem;align-items:center">
+    <code style="background:var(--color-bg);padding:.5rem .75rem;border-radius:6px;border:1px solid var(--color-border);font-size:.85rem;flex:1;word-break:break-all">
+      <%= baseUrl %>/admin/trails/<%= trail.id %>/results?token=<%= trail.results_token %>
+    </code>
+    <button onclick="navigator.clipboard.writeText('<%= baseUrl %>/admin/trails/<%= trail.id %>/results?token=<%= trail.results_token %>')"
+            class="btn btn-secondary btn-sm">Kopiera</button>
+  </div>
+</div>
+
+<div class="card">
+  <h2 class="card-title">Deltagare (<%= sessions.length %>)</h2>
+
+  <% if (sessions.length === 0) { %>
+    <p class="text-muted">Inga deltagare har slutfört promenaden ännu.</p>
+  <% } else { %>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Smeknamn</th>
+          <th>Startade</th>
+          <th>Avslutade</th>
+          <th>Svar</th>
+          <th>Poäng</th>
+          <th>Åtgärder</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% sessions.forEach(s => { %>
+        <tr>
+          <td><strong><%= s.nickname || 'Anonym' %></strong></td>
+          <td><%= new Date(s.started_at).toLocaleString('sv-SE') %></td>
+          <td>
+            <% if (s.completed_at) { %>
+              <%= new Date(s.completed_at).toLocaleString('sv-SE') %>
+            <% } else { %>
+              <span class="text-muted">Ej klar</span>
+            <% } %>
+          </td>
+          <td><%= s.answer_count %></td>
+          <td><strong><%= s.total_score || 0 %> p</strong></td>
+          <td class="action-cell">
+            <a href="/admin/trails/<%= trail.id %>/results/<%= s.id %>" class="btn btn-xs btn-secondary">
+              Se svar
+            </a>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  <% } %>
+</div>
+
+<%- include('../../partials/footer') %>

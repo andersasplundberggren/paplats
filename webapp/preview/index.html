@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d1b2e">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="På plats">
+  <title>På plats</title>
+  <link rel="manifest" href="/app/pwa/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/app/icons/icon-192.png">
+  <link rel="stylesheet" href="/app/pwa/app.css">
+</head>
+<body data-view="code">
+
+<!-- STUB-ELEMENT: originalet letar efter dessa men vi visar dem inte -->
+<div id="screenTitle" hidden></div>
+<div id="startGuideCard" hidden></div>
+<div id="openStartGuideBtn" hidden></div>
+<div id="closeStartGuideBtn" hidden></div>
+<div id="reopenIntroBtn" hidden></div>
+<div id="assignmentTypeBadge" hidden></div>
+<div id="assignmentPrimaryAction" hidden></div>
+<div id="assignmentMysteryHint" hidden></div>
+<div id="assignmentVisitedCount" hidden></div>
+<div id="assignmentPlaceCount" hidden></div>
+<div id="mapDistanceHint" hidden></div>
+<div id="mapCountdown" hidden></div>
+<div id="detailHeroMedia" hidden></div>
+<div id="detailPlaceDescription" hidden></div>
+<div id="detailPlaceOrder" hidden></div>
+<div id="detailCtaRow" hidden></div>
+<div id="detailRegisterVisitBtn" hidden></div>
+<div id="notesStatus" hidden></div>
+<div id="notesTabBtn" hidden></div>
+<div id="evidenceTabBtn" hidden></div>
+<div id="infoFabBtn" hidden></div>
+<div id="evidenceFabBtn" hidden></div>
+<div id="notesTabContent" hidden></div>
+<div id="evidenceTabContent" hidden></div>
+<div id="listBackdrop" hidden></div>
+<div id="detailBackdrop" hidden></div>
+<div id="notesBackdrop" hidden></div>
+<div id="leaderboardBackdrop" hidden></div>
+<div id="autoCompleteBackdrop" hidden></div>
+<div id="resumeAssignmentCode" hidden></div>
+<div id="resumeDismissBtn" hidden></div>
+<div id="digitalCountdown" hidden></div>
+<div id="placeTemplate" hidden></div>
+<div id="fitAllBtn" hidden></div>
+<div id="autoCompleteView" hidden></div>
+<div id="autoCompleteTitle" hidden></div>
+<div id="autoCompleteLead" hidden></div>
+<div id="autoCompleteSummaryWrap" hidden></div>
+<div id="autoCompletePlacesStat" hidden></div>
+<div id="autoCompleteAnswersStat" hidden></div>
+<div id="autoCompleteCorrectStat" hidden></div>
+<div id="autoCompleteScoreStat" hidden></div>
+<div id="autoCompleteModeNotice" hidden></div>
+<div id="autoCompleteRecentList" hidden></div>
+<div id="autoCompleteSummaryToggleBtn" hidden></div>
+<div id="autoCompleteFinishBtn" hidden></div>
+<div id="autoCompleteContinueBtn" hidden></div>
+<div id="digitalView" hidden></div>
+
+<!-- MODALER -->
+<dialog id="sessionExpiredModal" class="modal">
+  <div class="modal-inner">
+    <div class="modal-head"><span class="modal-title">Sessionen har gått ut</span></div>
+    <p class="modal-body-text">Din session är inte längre aktiv.</p>
+    <div class="modal-actions">
+      <button id="sessionExpiredHomeBtn" class="btn btn-secondary">Tillbaka</button>
+      <button id="sessionExpiredRestartBtn" class="btn btn-primary">Starta om</button>
+    </div>
+    <div id="sessionExpiredContinueBtn" hidden></div>
+  </div>
+</dialog>
+
+<dialog id="welcomeModal" class="modal">
+  <div class="modal-inner">
+    <div class="modal-head"><span class="modal-title">Välkommen till På plats</span></div>
+    <p class="modal-body-text">Utforska platser och lås upp digitala upplevelser nära dig.</p>
+    <div class="modal-actions">
+      <button id="welcomeModalSkipBtn" class="btn btn-secondary">Hoppa över</button>
+      <button id="welcomeModalCloseBtn" class="btn btn-primary">Kom igång</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="leaveConfirmModal" class="modal">
+  <div class="modal-inner">
+    <div class="modal-head"><span class="modal-title">Avsluta uppdraget?</span></div>
+    <p id="leaveConfirmText" class="modal-body-text">Dina framsteg sparas.</p>
+    <div class="modal-actions">
+      <button id="leaveConfirmCancelBtn" class="btn btn-secondary">Avbryt</button>
+      <button id="leaveConfirmOkBtn" class="btn btn-danger">Avsluta</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="iosInstallModal" class="modal">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <span class="modal-title">Installera På plats</span>
+      <button id="iosInstallCloseBtn" class="modal-close">&#x2715;</button>
+    </div>
+    <p class="modal-body-text">Lägg till appen på hemskärmen för bättre upplevelse.</p>
+    <ol class="install-steps">
+      <li><strong>Tryck dela-knappen</strong> <span class="install-hint">i Safari.</span></li>
+      <li><strong>Välj "Lägg till på hemskärmen"</strong></li>
+      <li><strong>Tryck "Lägg till"</strong></li>
+    </ol>
+    <button id="iosInstallDoneBtn" class="btn btn-primary btn-full">Klar</button>
+  </div>
+</dialog>
+
+<dialog id="shareGroupModal" class="modal">
+  <div class="modal-inner">
+    <div class="modal-head">
+      <span class="modal-title">Bjud in till gruppen</span>
+      <button id="shareGroupCloseBtn" class="modal-close">&#x2715;</button>
+    </div>
+    <p class="modal-body-text">Dela koden med dina medspelare:</p>
+    <div class="share-code-display">
+      <span id="shareGroupCode" class="share-code">——</span>
+      <button id="copyGroupCodeBtn" class="btn btn-ghost btn-sm">Kopiera</button>
+    </div>
+    <button id="shareGroupNativeBtn" class="btn btn-primary btn-full mt-1">Dela via telefonen</button>
+  </div>
+</dialog>
+
+<!-- Lightbox -->
+<div id="spoton-lightbox" class="lightbox" hidden>
+  <button id="lightboxCloseBtn" class="lightbox-close">&#x2715;</button>
+  <div class="lightbox-content">
+    <img id="lightboxImg" src="" alt="" class="lightbox-img">
+  </div>
+</div>
+
+<!-- Toast / statusCard -->
+<div id="statusCard" class="toast" aria-live="polite"></div>
+
+<!-- APPSKALET -->
+<div class="app-shell">
+
+  <!-- VY: KOD -->
+  <section id="codeView" class="view view-code">
+    <header class="view-header">
+      <div class="app-wordmark">På plats</div>
+      <button id="installBtn" class="install-btn hidden" type="button">+ Installera</button>
+    </header>
+    <div class="code-hero">
+      <div class="code-hero-icon">
+        <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="32" cy="32" r="32" fill="#3b82f6"/>
+          <circle cx="32" cy="26" r="10" fill="rgba(255,255,255,.18)"/>
+          <circle cx="32" cy="26" r="4" fill="white" opacity=".92"/>
+          <path d="M32 36c0 0-12 13-12 18h24c0-5-12-18-12-18z" fill="rgba(255,255,255,.14)"/>
+        </svg>
+      </div>
+      <h1 class="code-hero-title">Välkommen till<br><em>På plats</em></h1>
+      <p class="code-hero-sub">Ange din uppdragskod för att utforska platser nära dig.</p>
+    </div>
+    <div class="code-form-card">
+      <label for="codeInput" class="form-label">Uppdragskod</label>
+      <div class="code-input-row">
+        <input id="codeInput" type="text" inputmode="text" autocomplete="off"
+          autocapitalize="characters" spellcheck="false" maxlength="20"
+          placeholder="T.ex. HBGT24" class="code-input">
+        <button id="loadAssignmentBtn" class="btn btn-primary" type="button">Hämta</button>
+      </div>
+    </div>
+    <div id="resumeCard" class="resume-card hidden">
+      <div>
+        <div class="resume-card-label">Pågående uppdrag</div>
+        <div id="resumeAssignmentTitle" class="resume-card-title">—</div>
+      </div>
+      <div class="resume-card-actions">
+        <button id="resumeBtn" class="btn btn-primary btn-sm">Fortsätt</button>
+        <button id="resetSessionBtn" class="btn btn-ghost btn-sm">Rensa</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- VY: INTRO -->
+  <section id="introView" class="view view-intro">
+    <header class="view-header-back">
+      <button id="backToCodeBtn" class="btn btn-ghost btn-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+      </button>
+      <span id="assignmentType" class="eyebrow">Uppdrag</span>
+      <div style="width:38px"></div>
+    </header>
+    <div class="intro-body">
+      <h2 id="assignmentTitle" class="intro-title">Laddar…</h2>
+      <p id="assignmentIntroTitle" class="intro-subtitle"></p>
+      <div id="assignmentIntro" class="intro-description"></div>
+      <div class="intro-meta-row">
+        <div class="intro-meta-chip">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/></svg>
+          <span id="introPlaceCountText">— platser</span>
+        </div>
+      </div>
+      <div class="intro-field-group">
+        <label for="nicknameInput" class="form-label">Ditt namn (valfritt)</label>
+        <input id="nicknameInput" type="text" autocomplete="name" maxlength="40"
+          placeholder="Vad ska vi kalla dig?" class="form-input">
+      </div>
+      <!-- Grupp-sektion -->
+      <div id="groupSection" class="group-section hidden">
+        <div class="group-section-title">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Grupptävling
+        </div>
+        <p class="group-section-desc">Skapa en grupp och dela koden, eller gå med i en befintlig grupp.</p>
+        <button id="createGroupBtn" class="btn btn-secondary btn-full">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Skapa grupp
+        </button>
+        <div id="groupCreated" class="group-created hidden">
+          <div class="group-created-label">Din gruppkod</div>
+          <div class="group-code-row">
+            <span id="groupInviteCode" class="group-invite-code">——</span>
+            <button id="shareGroupCodeBtn" class="btn btn-ghost btn-sm">Dela</button>
+          </div>
+          <p class="group-created-hint">Dela koden med dina medspelare och starta sedan uppdraget.</p>
+        </div>
+        <div class="group-join-row">
+          <input id="joinGroupInput" type="text" inputmode="text" autocapitalize="characters"
+            maxlength="6" placeholder="Ange gruppkod" class="form-input group-join-input">
+          <button id="joinGroupBtn" class="btn btn-secondary">Gå med</button>
+        </div>
+        <div id="groupStatus" class="group-status hidden" aria-live="polite"></div>
+      </div>
+    </div>
+    <div class="intro-footer">
+      <button id="startAssignmentBtn" class="btn btn-primary btn-full btn-lg">Starta uppdrag</button>
+    </div>
+  </section>
+
+  <!-- VY: KARTA -->
+  <section id="mapView" class="view view-map">
+
+    <canvas id="mapCanvas" class="map-canvas"></canvas>
+
+    <div class="map-overlays">
+      <div class="map-top-bar">
+        <div id="activeAssignmentTitle" class="map-top-title"></div>
+        <div id="mapTimerBadge" class="map-timer-badge hidden"></div>
+      </div>
+      <div id="mapGpsStatus" class="map-gps-status map-gps-searching">
+        <span class="map-gps-dot"></span>
+        <span id="mapStatusText">Söker position…</span>
+      </div>
+      <div id="mapIntroCard" class="map-intro-card hidden">
+        <div id="mapIntroCardTitle" class="map-intro-title"></div>
+        <p id="mapIntroCardBody" class="map-intro-body"></p>
+        <button id="closeMapIntroBtn" class="map-intro-close">Stäng ✕</button>
+      </div>
+      <div class="map-tools">
+        <button id="locateMeBtn" class="map-tool-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+        </button>
+        <button id="zoomInBtn" class="map-tool-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        <button id="zoomOutBtn" class="map-tool-btn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Platslista -->
+    <div id="listPanel" class="bottom-sheet list-sheet">
+      <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+      <div class="sheet-header">
+        <div class="sheet-header-left">
+          <button id="closeListBtn" class="sheet-back-link">Karta</button>
+        </div>
+        <div class="sheet-header-center">
+          <div class="sheet-title" id="listSheetTitle">Platser</div>
+          <div class="sheet-subtitle" id="listSheetSubtitle"></div>
+        </div>
+        <div class="sheet-header-right"></div>
+      </div>
+      <div id="placesList" class="places-list"></div>
+    </div>
+
+    <!-- Platsdetalj -->
+    <div id="placeDetailView" class="bottom-sheet detail-sheet">
+      <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+      <div class="sheet-header">
+        <div class="sheet-header-left">
+          <button id="backToListBtn" class="sheet-back-link">Lista</button>
+        </div>
+        <div class="sheet-header-center">
+          <div class="sheet-title" id="detailPlaceTitle">Plats</div>
+        </div>
+        <div class="sheet-header-right">
+          <button id="backToMapBtn" hidden></button>
+        </div>
+      </div>
+      <div id="detailContentList" class="detail-sheet-body"></div>
+    </div>
+
+    <!-- Anteckningar (overlay) -->
+    <div id="notesOverlay" style="display:none;position:absolute;inset:0;z-index:35;background:var(--bg);flex-direction:column">
+      <header class="view-header-back">
+        <button id="closeNotesBtn" class="btn btn-ghost btn-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="view-header-title">Anteckningar</span>
+        <div style="width:38px"></div>
+      </header>
+      <div class="notes-body">
+        <div class="tabs" id="notesTabs">
+          <button class="tab active" data-tab="suspects">Misstänkta</button>
+          <button class="tab" data-tab="evidence">Bevis</button>
+          <button class="tab" data-tab="free">Fritt</button>
+        </div>
+        <div id="tabSuspects" class="tab-panel active">
+          <div id="evidenceList"></div>
+        </div>
+        <div id="tabEvidence" class="tab-panel"></div>
+        <div id="tabFree" class="tab-panel">
+          <textarea id="notesTextarea" class="notes-textarea" placeholder="Dina egna anteckningar…"></textarea>
+          <button id="saveNotesBtn" class="btn btn-primary btn-full mt-1">Spara</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Topplista -->
+    <div id="leaderboardOverlay" class="leaderboard-overlay">
+      <div class="leaderboard-panel">
+        <div class="leaderboard-panel-head">
+          <div>
+            <div class="leaderboard-panel-title" id="leaderboardTitle">Topplista</div>
+          </div>
+          <button id="closeLeaderboardBtn" class="btn btn-ghost btn-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <div id="leaderboardBody" class="leaderboard-body"><div class="leaderboard-empty">Hämtar…</div></div>
+        <div class="leaderboard-footer">
+          <button id="refreshLeaderboardBtn" class="btn btn-secondary btn-sm btn-full">Uppdatera</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Avslutning (overlay) -->
+    <div id="completionView" style="display:none;position:absolute;inset:0;z-index:36;background:var(--bg);align-items:center;justify-content:center">
+      <div class="completion-body">
+        <div class="completion-icon">&#x1F389;</div>
+        <h2 class="completion-title">Uppdraget slutfört!</h2>
+        <p id="completionLead" class="completion-summary"></p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:16px 0;width:100%">
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:6px">Platser</div>
+            <div id="completionPlacesStat" style="font-size:1.5rem;font-weight:800;color:var(--text)">—</div>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:6px">Poäng</div>
+            <div id="completionScoreStat" style="font-size:1.5rem;font-weight:800;color:var(--accent)">—</div>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:6px">Svar</div>
+            <div id="completionAnswersStat" style="font-size:1.5rem;font-weight:800;color:var(--text)">—</div>
+          </div>
+          <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center">
+            <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2);margin-bottom:6px">Rätt</div>
+            <div id="completionCorrectStat" style="font-size:1.5rem;font-weight:800;color:var(--success)">—</div>
+          </div>
+        </div>
+        <div id="completionModeNotice" style="font-size:.82rem;color:var(--text-2);margin-bottom:12px"></div>
+        <div id="completionRecentList" style="width:100%;margin-bottom:16px"></div>
+        <div style="display:flex;gap:10px;width:100%">
+          <button id="completionCancelBtn" class="btn btn-secondary" style="flex:1">Avbryt</button>
+          <button id="completionConfirmBtn" class="btn btn-primary" style="flex:1">Avsluta</button>
+        </div>
+        <div id="completionBackdrop" hidden></div>
+        <div id="completionBackBtn" hidden></div>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <nav class="bottom-nav">
+      <button class="bottom-nav-item active" id="navMap">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 20l-5-2.5V5l5 2m0 15V7m0 13 6-3M9 7l6-3m0 17 5-2.5V5l-5 2m0 15V7"/></svg>
+        <span class="nav-label">Karta</span>
+      </button>
+      <button class="bottom-nav-item" id="toggleListBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        <span class="nav-label">Lista</span>
+      </button>
+      <button class="bottom-nav-item hidden" id="leaderboardFabBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        <span class="nav-label">Topplista</span>
+      </button>
+      <button class="bottom-nav-item" id="notesFabBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+        <span class="nav-label">Anteckningar</span>
+      </button>
+      <button class="bottom-nav-item nav-leave" id="leaveAssignmentBtn">
+        <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="nav-label">Lämna</span>
+      </button>
+    </nav>
+
+  </section>
+
+</div><!-- /app-shell -->
+
+<script src="/app/pwa/config.js"></script>
+<script>
+// Patcha SPOTON_CONFIG från PAPLATS_CONFIG
+(function(){
+  var src = window.PAPLATS_CONFIG || {};
+  window.SPOTON_CONFIG = {
+    apiBaseUrl: src.apiBaseUrl || '/api/v1',
+    appBasePath: '/app/pwa',
+    mediaBaseUrl: src.mediaBaseUrl || '',
+    map: src.map || {}
+  };
+})();
+</script>
+<script src="/app/pwa/app.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+
+  // GPS-statusrad: synka CSS-klass
+  var gpsEl = document.getElementById('mapGpsStatus');
+  var gpsText = document.getElementById('mapStatusText');
+  if (gpsEl && gpsText) {
+    var obs = new MutationObserver(function() {
+      var txt = (gpsText.textContent || '').toLowerCase();
+      gpsEl.className = 'map-gps-status ' +
+        (txt.includes('söker') || txt.includes('väntar') ? 'map-gps-searching' :
+         txt.includes('nekad') || txt.includes('saknas') || txt.includes('ej') ? 'map-gps-denied' :
+         'map-gps-active');
+    });
+    obs.observe(gpsText, { childList: true, characterData: true, subtree: true });
+  }
+
+  // statusCard som toast
+  var sc = document.getElementById('statusCard');
+  if (sc) {
+    var scObs = new MutationObserver(function() {
+      var hasText = (sc.textContent || '').trim().length > 0;
+      sc.classList.toggle('visible', hasText);
+      var isError = sc.style.background && sc.style.background.includes('220');
+      sc.classList.toggle('is-error', isError);
+      if (hasText) {
+        clearTimeout(sc._hideTimer);
+        sc._hideTimer = setTimeout(function() {
+          sc.classList.remove('visible');
+        }, 3500);
+      }
+    });
+    scObs.observe(sc, { childList: true, characterData: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  }
+
+  // Nav-knappar
+  document.querySelectorAll('.bottom-nav-item').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.bottom-nav-item').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+
+  // Tab-switcher i anteckningsvyn
+  document.querySelectorAll('#notesTabs .tab').forEach(function(tab) {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('#notesTabs .tab').forEach(function(t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      var target = tab.dataset.tab;
+      document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+      var map = { suspects: 'tabSuspects', evidence: 'tabEvidence', free: 'tabFree' };
+      var panel = document.getElementById(map[target]);
+      if (panel) panel.classList.add('active');
+    });
+  });
+
+  // Spara anteckningar
+  var saveBtn = document.getElementById('saveNotesBtn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+      if (typeof saveNotesNow === 'function') saveNotesNow();
+    });
+  }
+
+  // showView-patch: mappa vy-namn till ny HTML
+  var _origShowView = window.showView;
+  if (typeof _origShowView === 'function') {
+    window.showView = function(name) {
+      // Dölj alla sektioner
+      ['codeView','introView','mapView'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+      });
+      // Dölj overlays
+      ['notesOverlay','completionView','leaderboardOverlay'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.style.display = 'none';
+      });
+      // Dölj sheets
+      ['listPanel','placeDetailView'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.classList.remove('active');
+      });
+
+      if (name === 'code') {
+        var el = document.getElementById('codeView');
+        if (el) el.classList.add('active');
+      } else if (name === 'intro') {
+        var el = document.getElementById('introView');
+        if (el) el.classList.add('active');
+      } else if (name === 'map') {
+        var el = document.getElementById('mapView');
+        if (el) el.classList.add('active');
+        if (typeof queueMapRender === 'function') queueMapRender();
+      } else if (name === 'placeDetail') {
+        var el = document.getElementById('mapView');
+        if (el) el.classList.add('active');
+        var detail = document.getElementById('placeDetailView');
+        if (detail) detail.classList.add('active');
+        if (typeof queueMapRender === 'function') queueMapRender();
+      } else if (name === 'completion') {
+        var el = document.getElementById('mapView');
+        if (el) el.classList.add('active');
+        var comp = document.getElementById('completionView');
+        if (comp) { comp.style.display = 'flex'; }
+      } else if (name === 'notes') {
+        var el = document.getElementById('mapView');
+        if (el) el.classList.add('active');
+        var notes = document.getElementById('notesOverlay');
+        if (notes) notes.style.display = 'flex';
+      } else if (name === 'digital') {
+        var el = document.getElementById('mapView');
+        if (el) el.classList.add('active');
+      }
+
+      document.body.dataset.view = name;
+    };
+  }
+
+  // setActivePanel-patch
+  var _origSetPanel = window.setActivePanel;
+  if (typeof _origSetPanel === 'function') {
+    window.setActivePanel = function(panel) {
+      _origSetPanel(panel);
+      var mapView = document.getElementById('mapView');
+      if (mapView) mapView.classList.add('active');
+      var listPanel = document.getElementById('listPanel');
+      var detailPanel = document.getElementById('placeDetailView');
+      if (listPanel) listPanel.classList.toggle('active', panel === 'list');
+      if (detailPanel && panel !== 'detail') detailPanel.classList.remove('active');
+    };
+  }
+
+  // openNotesPanel-patch
+  var _origOpenNotes = window.openNotesPanel;
+  if (typeof _origOpenNotes === 'function') {
+    window.openNotesPanel = function(tab) {
+      var el = document.getElementById('notesOverlay');
+      if (el) el.style.display = 'flex';
+      document.body.dataset.view = 'notes';
+      if (tab) {
+        var tabMap = { notes: 'free', evidence: 'evidence' };
+        var mappedTab = tabMap[tab] || tab;
+        document.querySelectorAll('#notesTabs .tab').forEach(function(t) {
+          t.classList.toggle('active', t.dataset.tab === mappedTab);
+        });
+        var panelMap = { free: 'tabFree', evidence: 'tabEvidence', suspects: 'tabSuspects' };
+        document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+        var panelId = panelMap[mappedTab];
+        var panel = document.getElementById(panelId);
+        if (panel) panel.classList.add('active');
+      }
+    };
+  }
+
+  // closeNotesPanel-patch
+  var _origCloseNotes = window.closeNotesPanel;
+  if (typeof _origCloseNotes === 'function') {
+    window.closeNotesPanel = function(opts) {
+      var el = document.getElementById('notesOverlay');
+      if (el) el.style.display = 'none';
+      if (document.body.dataset.view === 'notes') {
+        document.body.dataset.view = 'map';
+      }
+    };
+  }
+
+  // Lightbox
+  var lb = document.getElementById('spoton-lightbox');
+  var lbClose = document.getElementById('lightboxCloseBtn');
+  if (lbClose) lbClose.addEventListener('click', function() { if (lb) lb.setAttribute('hidden',''); });
+  if (lb) lb.addEventListener('click', function(e) { if (e.target === lb) lb.setAttribute('hidden',''); });
+
+  // Dela gruppkod
+  var shareBtn = document.getElementById('shareGroupCodeBtn');
+  var modal = document.getElementById('shareGroupModal');
+  var closeBtn = document.getElementById('shareGroupCloseBtn');
+  var codeEl = document.getElementById('shareGroupCode');
+  var copyBtn = document.getElementById('copyGroupCodeBtn');
+  var nativeBtn = document.getElementById('shareGroupNativeBtn');
+  if (shareBtn && modal) {
+    shareBtn.addEventListener('click', function() {
+      var code = (document.getElementById('groupInviteCode') || {}).textContent || '';
+      if (codeEl) codeEl.textContent = code;
+      if (modal.showModal) modal.showModal();
+    });
+  }
+  if (closeBtn && modal) closeBtn.addEventListener('click', function() { if (modal.close) modal.close(); });
+  if (copyBtn) {
+    copyBtn.addEventListener('click', function() {
+      var code = codeEl ? codeEl.textContent : '';
+      navigator.clipboard && navigator.clipboard.writeText(code);
+      copyBtn.textContent = 'Kopierat!';
+      setTimeout(function() { copyBtn.textContent = 'Kopiera'; }, 2000);
+    });
+  }
+  if (nativeBtn) {
+    nativeBtn.addEventListener('click', function() {
+      var code = codeEl ? codeEl.textContent : '';
+      if (navigator.share) navigator.share({ text: 'Gå med i min grupp! Kod: ' + code });
+      else navigator.clipboard && navigator.clipboard.writeText(code);
+    });
+  }
+
+  // Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/app/pwa/sw.js', { scope: '/app/pwa/' })
+      .catch(function(err) { console.warn('SW failed:', err); });
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#F5F1EA">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="På Plats">
+  <title>På Plats</title>
+  <link rel="manifest" href="/app/test/app.webmanifest">
+  <link rel="apple-touch-icon" href="/app/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/app/icons/icon-192.png">
+  <link rel="stylesheet" href="/app/test/app.css">
+  <link rel="stylesheet" href="/app/test/tour.css">
+</head>
+<body data-view="code">
+  <div class="app-shell">
+
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">På Plats</div>
+        <h1 id="screenTitle">Ange kod</h1>
+      </div>
+      <button id="installBtn" class="secondary hidden" type="button" aria-hidden="true"
+        style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+        Installera appen
+      </button>
+    </header>
+
+    <!-- ═══ Modaler ════════════════════════════════════════════ -->
+    <dialog id="iosInstallModal" style="border:none;border-radius:24px;padding:0;width:min(380px,92vw);box-shadow:0 20px 60px rgba(60,50,35,.18);background:#fff">
+      <div style="padding:1.75rem 1.5rem">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem">
+          <h2 style="font-size:1.1rem;font-weight:700;color:#1B1612;margin:0">Installera På plats</h2>
+          <button id="iosInstallCloseBtn" type="button" style="background:none;border:none;color:rgba(60,50,35,.5);font-size:1.4rem;cursor:pointer;padding:.2rem .4rem;line-height:1">✕</button>
+        </div>
+        <p style="font-size:.85rem;color:rgba(60,50,35,.6);margin-bottom:1.25rem;line-height:1.5">Lägg till På plats på hemskärmen för en bättre upplevelse — fungerar som en app utan att ta upp lagringsutrymme.</p>
+        <div style="display:flex;flex-direction:column;gap:.85rem">
+          <div style="display:flex;align-items:flex-start;gap:.85rem">
+            <div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#2E6FE6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem">1</div>
+            <div>
+              <div style="font-size:.88rem;font-weight:600;color:#1B1612;margin-bottom:.2rem">Tryck på dela-knappen</div>
+              <div style="font-size:.78rem;color:rgba(60,50,35,.6)">Tryck på <strong style="color:#1B1612">□↑</strong> i Safari-menyraden längst ned på skärmen.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:.85rem">
+            <div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#2E6FE6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem">2</div>
+            <div>
+              <div style="font-size:.88rem;font-weight:600;color:#1B1612;margin-bottom:.2rem">Välj "Lägg till på hemskärmen"</div>
+              <div style="font-size:.78rem;color:rgba(60,50,35,.6)">Scrolla ned i menyn och tryck på <strong style="color:#1B1612">+ Lägg till på hemskärmen</strong>.</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-start;gap:.85rem">
+            <div style="flex-shrink:0;width:32px;height:32px;border-radius:50%;background:#2E6FE6;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.9rem">3</div>
+            <div>
+              <div style="font-size:.88rem;font-weight:600;color:#1B1612;margin-bottom:.2rem">Tryck på "Lägg till"</div>
+              <div style="font-size:.78rem;color:rgba(60,50,35,.6)">Bekräfta med <strong style="color:#1B1612">Lägg till</strong> i övre högra hörnet.</div>
+            </div>
+          </div>
+        </div>
+        <button id="iosInstallDoneBtn" type="button" style="width:100%;margin-top:1.5rem;padding:.7rem;border-radius:14px;background:#2E6FE6;color:#fff;border:none;font-size:.9rem;font-weight:600;cursor:pointer">
+          Klar
+        </button>
+      </div>
+    </dialog>
+
+    <dialog id="leaveConfirmModal" style="border:none;border-radius:24px;padding:2rem;width:min(360px,90vw);box-shadow:0 20px 60px rgba(60,50,35,.18);background:#fff">
+      <h2 style="font-size:1.05rem;font-weight:700;color:#1B1612;margin:0 0 .65rem">Avsluta uppdraget?</h2>
+      <p id="leaveConfirmText" style="font-size:.85rem;color:rgba(60,50,35,.6);margin:0 0 1.5rem;line-height:1.5">Dina framsteg sparas och du kan inte fortsätta uppdraget efteråt.</p>
+      <div style="display:flex;gap:.75rem">
+        <button id="leaveConfirmCancelBtn" type="button" style="flex:1;padding:.65rem;border-radius:12px;border:1px solid rgba(60,50,35,.14);background:none;color:rgba(60,50,35,.6);font-size:.9rem;cursor:pointer">Fortsätt uppdraget</button>
+        <button id="leaveConfirmOkBtn" type="button" style="flex:1;padding:.65rem;border-radius:12px;background:#C8422A;color:#fff;border:none;font-size:.9rem;font-weight:600;cursor:pointer">Avsluta</button>
+      </div>
+    </dialog>
+
+    <dialog id="sessionExpiredModal" style="border:none;border-radius:24px;padding:2rem;width:min(380px,90vw);box-shadow:0 20px 60px rgba(60,50,35,.18);background:#fff">
+      <div style="font-size:2rem;text-align:center;margin-bottom:.75rem">⏱</div>
+      <h2 style="font-size:1.05rem;font-weight:700;color:#1B1612;margin:0 0 .65rem;text-align:center">Sessionen har löpt ut</h2>
+      <p style="font-size:.85rem;color:rgba(60,50,35,.6);margin:0 0 1.5rem;line-height:1.5;text-align:center">
+        Din session finns inte längre på servern. Det kan bero på att du varit inaktiv för länge eller att systemet rensat gamla sessioner.
+      </p>
+      <div style="display:flex;flex-direction:column;gap:.6rem">
+        <button id="sessionExpiredRestartBtn" type="button" style="padding:.65rem;border-radius:12px;background:#2E6FE6;color:#fff;border:none;font-size:.9rem;font-weight:600;cursor:pointer">Starta om uppdraget</button>
+        <button id="sessionExpiredContinueBtn" type="button" style="padding:.65rem;border-radius:12px;border:1px solid rgba(60,50,35,.14);background:none;color:rgba(60,50,35,.6);font-size:.9rem;cursor:pointer">Fortsätt utan att spara</button>
+        <button id="sessionExpiredHomeBtn" type="button" style="padding:.65rem;border-radius:12px;border:none;background:none;color:rgba(60,50,35,.45);font-size:.85rem;cursor:pointer">Gå till startsidan</button>
+      </div>
+    </dialog>
+
+    <dialog id="welcomeModal" class="guide-modal">
+      <div class="guide-modal-inner">
+        <div class="guide-handle"></div>
+        <div class="guide-header">
+          <div>
+            <div class="guide-eyebrow">På plats Guide</div>
+            <h2 class="guide-title">Så fungerar appen</h2>
+          </div>
+        </div>
+        <div class="guide-steps">
+          <div class="guide-step">
+            <div class="guide-step-num">1</div>
+            <div class="guide-step-body">
+              <div class="guide-step-title">Ange åtkomstkoden</div>
+              <div class="guide-step-text">Koden finns på inbjudningskortet eller QR-skylten vid startpunkten. Skriv in den och tryck på <strong>Öppna uppdrag</strong>.</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">2</div>
+            <div class="guide-step-body">
+              <div class="guide-step-title">Hitta platser på kartan</div>
+              <div class="guide-step-text">Kartan visar din position och uppdragens platser. Gå fysiskt till en plats för att låsa upp dess innehåll.</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">3</div>
+            <div class="guide-step-body">
+              <div class="guide-step-title">Utforska innehållet på plats</div>
+              <div class="guide-step-text">Varje plats har unikt innehåll — historik, frågor, ledtrådar eller utmaningar. Tryck på knappen längst ned på kartan för att komma till närmaste plats.</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">4</div>
+            <div class="guide-step-body">
+              <div class="guide-step-title">Svara på frågor och lös gåtor</div>
+              <div class="guide-step-text">I tipspromenader svarar du direkt i appen. I mordgåtor och skattjakter kan du öppna ledtrådar och använda anteckningsfunktionen.</div>
+            </div>
+          </div>
+          <div class="guide-step">
+            <div class="guide-step-num">5</div>
+            <div class="guide-step-body">
+              <div class="guide-step-title">Avsluta uppdraget</div>
+              <div class="guide-step-text">Tryck på <strong>Avsluta uppdrag</strong> när du är klar. Du ser din sammanfattning och eventuell poäng efteråt.</div>
+            </div>
+          </div>
+        </div>
+        <div class="guide-cta">
+          <button id="welcomeModalCloseBtn" type="button" class="guide-cta-btn">Kom igång!</button>
+          <button id="welcomeModalSkipBtn" type="button" class="guide-skip-btn">Visa inte igen vid nästa besök</button>
+        </div>
+      </div>
+    </dialog>
+
+    <section id="statusCard" class="card info hidden"></section>
+
+    <main class="main-content">
+
+      <!-- ═══ KOD-VY ════════════════════════════════════════════ -->
+      <section id="codeView" class="view card active" aria-labelledby="screenTitle">
+        <div id="resumeCard" class="resume-card hidden" aria-label="Pågående uppdrag">
+          <div class="resume-card-body">
+            <div class="resume-card-eyebrow">Pågående uppdrag</div>
+            <div id="resumeAssignmentTitle" class="resume-card-title"></div>
+            <div id="resumeAssignmentCode" class="resume-card-code"></div>
+          </div>
+          <div class="resume-card-actions">
+            <button id="resumeBtn" class="primary" type="button">Fortsätt</button>
+            <button id="resumeDismissBtn" class="secondary" type="button">Starta nytt</button>
+          </div>
+        </div>
+
+        <div class="cs-field-group">
+          <label class="cs-field-label" for="codeInput">Åtkomstkod</label>
+          <input id="codeInput" class="cs-field-input cs-field-input--code" type="text"
+            inputmode="text" autocapitalize="characters" autocomplete="off" spellcheck="false"
+            placeholder="Till exempel KARLSKOGA">
+        </div>
+
+        <div class="cs-field-group">
+          <label class="cs-field-label" for="nicknameInput">
+            Namn <span class="cs-field-optional">— valfritt</span>
+          </label>
+          <input id="nicknameInput" class="cs-field-input" type="text" maxlength="120"
+            autocomplete="name" placeholder="Ditt namn (visas för arrangören)">
+        </div>
+
+        <button id="loadAssignmentBtn" class="primary cs-main-btn" type="button">Öppna uppdrag</button>
+
+        <div class="cs-divider" aria-hidden="true">
+          <div class="cs-divider-line"></div>
+          <span class="cs-divider-text">Mer</span>
+          <div class="cs-divider-line"></div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button id="openStartGuideBtn" class="cs-guide-btn" type="button">Så fungerar det</button>
+          <button onclick="window.SpotOnTour && (window.SpotOnTour.reset('code'), window.SpotOnTour.start('code'))"
+            class="cs-guide-btn" type="button" style="opacity:.7;font-size:.82rem;">
+            Visa knappguiden igen
+          </button>
+        </div>
+
+        <div class="cs-tools" role="group" aria-label="Inställningar och verktyg">
+          <div class="cs-tools-header" aria-hidden="true">Inställningar &amp; verktyg</div>
+          <button id="installHintBtn" class="cs-tool-row hidden" type="button">
+            <span class="cs-tool-icon cs-tool-icon--blue" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path d="M8.5 2v8.5M5.5 8l3 3 3-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M2 12.5h13v2a1 1 0 01-1 1H3a1 1 0 01-1-1v-2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="cs-tool-body">
+              <span class="cs-tool-label">Lägg till på hemskärmen</span>
+              <span class="cs-tool-sub">Fungerar som en app utan installation</span>
+            </span>
+            <span class="cs-tool-chevron" aria-hidden="true">›</span>
+          </button>
+          <!--<button id="locationGuideBtn" class="cs-tool-row" type="button" aria-expanded="false" aria-controls="locationGuideCard">
+            <span class="cs-tool-icon cs-tool-icon--green" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <circle cx="8.5" cy="7.5" r="2.5" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M8.5 1v1.5M8.5 13.5V15M1 7.5h1.5M14 7.5h1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                <path d="M8.5 10c-2.5 0-5 1.5-5 3.5h10c0-2-2.5-3.5-5-3.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="cs-tool-body">
+              <span class="cs-tool-label">Tillåt platstjänster</span>
+              <span class="cs-tool-sub">Krävs för att appen ska fungera</span>
+            </span>
+            <span class="cs-tool-chevron" aria-hidden="true">›</span>
+          </button> -->
+          <button id="resetSessionBtn" class="cs-tool-row" type="button">
+            <span class="cs-tool-icon cs-tool-icon--amber" aria-hidden="true">
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+                <path d="M2.5 8.5a6 6 0 1 0 1.2-3.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+                <path d="M1 4.5 3.7 5l.5-2.7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="cs-tool-body">
+              <span class="cs-tool-label">Nollställ lokal session</span>
+              <span class="cs-tool-sub">Rensar sparade framsteg på den här enheten</span>
+            </span>
+            <span class="cs-tool-chevron" aria-hidden="true">›</span>
+          </button>
+        </div>
+
+        <p class="cs-footnote">
+          Namn är frivilligt och visas bara för arrangören.
+          Framsteg sparas lokalt under pågående uppdrag.
+        </p>
+
+        <section id="startGuideCard" class="start-guide hidden" aria-label="Användarguide" aria-hidden="true">
+          <div class="start-guide-header">
+            <div>
+              <div class="eyebrow">Användarguide</div>
+              <h2>Så använder du appen</h2>
+            </div>
+            <button id="closeStartGuideBtn" class="secondary small" type="button">Stäng</button>
+          </div>
+          <div class="start-guide-grid">
+            <article class="start-guide-item"><h3>1. Starta uppdraget</h3><p>Skriv in din åtkomstkod och tryck på <strong>Öppna uppdrag</strong>.</p></article>
+            <article class="start-guide-item"><h3>2. Hitta rätt plats</h3><p>Kartan visar din position och de platser som hör till uppdraget.</p></article>
+            <article class="start-guide-item"><h3>3. Öppna plats eller uppdrag</h3><p>Knappen längst ned hjälper dig vidare.</p></article>
+            <article class="start-guide-item"><h3>4. Använd platslistan</h3><p>Tryck på <strong>Platslista</strong> för att se alla platser.</p></article>
+            <article class="start-guide-item"><h3>5. Ledtrådar och frågor</h3><p>I gåtor kan du öppna ledtrådar och pröva lösningar.</p></article>
+            <article class="start-guide-item"><h3>6. Anteckna i gåtor</h3><p>I mordgåtor och skattjakter finns knappen <strong>Anteckna</strong>.</p></article>
+          </div>
+        </section>
+
+        <section id="locationGuideCard" class="start-guide hidden" aria-label="Guide för platstjänster" aria-hidden="true">
+          <div class="start-guide-header">
+            <div>
+              <div class="eyebrow">Platstjänster</div>
+              <h2>Så tillåter du platsbehörighet</h2>
+            </div>
+            <button id="closeLocationGuideBtn" class="secondary small" type="button">Stäng</button>
+          </div>
+          <p style="font-size:.88rem;color:var(--sheet-muted,#64748b);margin:0 0 1rem;line-height:1.6">
+            På Plats behöver tillgång till din position för att visa vilka platser du är nära och låsa upp innehåll. Platstjänster aktiveras i webbläsarens inställningar.
+          </p>
+
+          <!-- iPhone / Safari -->
+          <div class="start-guide-platform">
+            <div class="start-guide-platform-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke-width="2.5" stroke-linecap="round"/></svg>
+              iPhone &amp; Safari
+            </div>
+            <ol class="start-guide-steps">
+              <li>Öppna <strong>Inställningar</strong> på din iPhone</li>
+              <li>Tryck på <strong>Integritet och säkerhet</strong></li>
+              <li>Tryck på <strong>Platstjänster</strong> och se till att det är påslaget</li>
+              <li>Scrolla ned och tryck på <strong>Safari</strong></li>
+              <li>Välj <strong>Vid användning av appen</strong> eller <strong>Fråga nästa gång</strong></li>
+              <li>Gå tillbaka till Safari och ladda om sidan — tryck <strong>Tillåt</strong> när webbläsaren frågar</li>
+            </ol>
+          </div>
+
+          <!-- Android / Chrome -->
+          <div class="start-guide-platform">
+            <div class="start-guide-platform-header">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12" y2="18.5" stroke-width="2.5" stroke-linecap="round"/></svg>
+              Android &amp; Chrome
+            </div>
+            <ol class="start-guide-steps">
+              <li>Tryck på <strong>hänglåset</strong> eller <strong>ⓘ</strong> till vänster i adressfältet</li>
+              <li>Tryck på <strong>Platsbehörigheter</strong> eller <strong>Behörigheter</strong></li>
+              <li>Välj <strong>Tillåt</strong> under Plats</li>
+              <li>Ladda om sidan</li>
+            </ol>
+            <p style="font-size:.8rem;color:var(--sheet-muted,#64748b);margin:.5rem 0 0;line-height:1.5">
+              Om alternativet saknas: gå till <strong>Inställningar → Appar → Chrome → Behörigheter → Plats</strong> och välj Tillåt.
+            </p>
+          </div>
+        </section>
+      </section>
+
+      <!-- ═══ INTRO-VY ══════════════════════════════════════════ -->
+      <section id="introView" class="view card" aria-labelledby="screenTitle">
+        <div class="assignment-header">
+          <div class="eyebrow" id="assignmentType"></div>
+          <h2 id="assignmentTitle"></h2>
+          <p id="assignmentIntroTitle" class="intro-subtitle hidden"></p>
+          <p id="assignmentIntro" class="lead"></p>
+        </div>
+
+        <div id="groupSection" class="group-section hidden">
+          <div class="group-section-label">Spela i grupp?</div>
+          <div class="group-section-body">
+            <button id="createGroupBtn" class="group-create-btn" type="button">Skapa ny grupp</button>
+            <div id="groupCreated" class="group-created hidden">
+              <div class="group-created-label">Dela den här koden med dina medspelare</div>
+              <div id="groupInviteCode" class="group-invite-code"></div>
+              <div class="group-created-meta">Gäller i 24 timmar · Max 15 deltagare</div>
+            </div>
+            <div class="group-join-row">
+              <input id="joinGroupInput" type="text" class="group-join-input"
+                     placeholder="Har du en gruppkod?" maxlength="6"
+                     autocomplete="off" autocorrect="off" autocapitalize="characters" />
+              <button id="joinGroupBtn" class="group-join-btn" type="button">Gå med</button>
+            </div>
+            <div id="groupStatus" class="group-status hidden"></div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="startAssignmentBtn" class="primary" type="button">Starta uppdrag</button>
+          <button id="backToCodeBtn" class="secondary" type="button">Tillbaka</button>
+        </div>
+      </section>
+
+      <!-- ═══════════════════════════════════════════════════════
+           KARTVY — HUD-design
+      ═══════════════════════════════════════════════════════ -->
+      <section id="mapView" class="view map-screen" aria-label="Karta över uppdraget">
+        <div id="mapCanvas" class="map-canvas" aria-label="Interaktiv karta">
+          <div class="map-loading">Laddar karta…</div>
+        </div>
+
+        <!-- ─── HUD: nav-pill + progress-pill ─────────────────── -->
+        <div class="map-hud">
+          <!-- Nav-pill: riktning + platsnamn + avstånd/status -->
+          <div class="hud-nav-pill">
+            <div class="hud-compass">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#fff">
+                <path d="M12 2l7 18-7-5-7 5z"/>
+              </svg>
+            </div>
+            <div style="flex:1;min-width:0;">
+              <div class="hud-place-eyebrow">Nästa plats</div>
+              <div id="mapStatusText" class="hud-place-name">Tillåt platsåtkomst…</div>
+            </div>
+            <div style="text-align:right;padding-right:2px;flex-shrink:0;max-width:44%;">
+              <div id="mapDistanceHint" class="hud-distance-value" style="font-size:12px;font-weight:500;color:rgba(60,50,35,0.55);line-height:1.3;white-space:normal;text-align:right;"></div>
+              <div id="mapCountdown" class="map-countdown hidden"></div>
+            </div>
+          </div>
+
+          <!-- Progress-pill: räknare + segmenterad bar + uppdragsnamn -->
+          <div class="hud-progress-pill">
+            <div id="hudProgressCount" class="hud-progress-count">–</div>
+            <div id="hudProgressTrack" class="hud-progress-track"></div>
+            <div id="hudAssignmentName" class="hud-assignment-name"></div>
+          </div>
+        </div>
+
+        <!-- Zoom-knappar dolda men JS-kompatibla 
+        <div style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true">
+          <button id="fitAllBtn" type="button">⊞</button>
+          <button id="zoomOutBtn" type="button">−</button>
+          <button id="zoomInBtn" type="button">+</button>
+        </div> -->
+
+<!-- Kartverktyg: höger rail -->
+<div class="map-control-stack">
+  <button id="locateMeBtn" class="map-fab map-fab-compact" type="button" aria-label="Min position">
+    <span class="map-fab-icon">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+      </svg>
+    </span>
+  </button>
+  <button id="zoomInBtn" class="map-fab map-fab-compact" type="button" aria-label="Zooma in">
+    <span class="map-fab-icon" style="font-size:1.3rem;font-weight:600;">+</span>
+  </button>
+  <button id="zoomOutBtn" class="map-fab map-fab-compact" type="button" aria-label="Zooma ut">
+    <span class="map-fab-icon" style="font-size:1.3rem;font-weight:600;">−</span>
+  </button>
+  <button id="fitAllBtn" class="map-fab map-fab-compact" type="button" aria-label="Visa alla platser">
+    <span class="map-fab-icon">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>
+      </svg>
+    </span>
+  </button>
+  <button id="infoFabBtn" class="map-fab map-fab-compact" type="button" aria-label="Uppdragsinformation">
+    <span class="map-fab-icon" style="font-size:1.1rem;font-weight:700;font-style:italic;">i</span>
+  
+  </button>
+  
+  <button onclick="window.SpotOnTour && (window.SpotOnTour.reset('map'), window.SpotOnTour.start('map'))"
+  class="map-fab map-fab-compact" type="button" aria-label="Visa kartguiden">
+  <span class="map-fab-icon" style="font-size:1rem;font-weight:700;font-style:italic;">?</span>
+</button>
+  
+</div>
+
+        <!-- Intro-kort -->
+        <section id="mapIntroCard" class="map-intro-card hidden" aria-label="Information om uppdraget">
+          <div class="map-intro-card-header">
+            <div id="mapIntroCardTitle" class="map-intro-card-title">Information</div>
+            <button id="closeMapIntroBtn" class="map-intro-close" type="button" aria-label="Stäng">✕</button>
+          </div>
+          <div id="mapIntroCardBody" class="map-intro-card-body"></div>
+        </section>
+
+        <!-- Platsliste-backdrop + panel -->
+        <div id="listBackdrop" class="sheet-backdrop panel-backdrop"></div>
+
+        <aside id="listPanel" class="list-sheet" aria-label="Lista över platser">
+          <div class="sheet-handle"></div>
+          <div class="list-sheet-header">
+            <button id="closeListBtn" class="sheet-close-btn" type="button">Stäng</button>
+            <div class="list-sheet-title-wrap">
+              <h2 id="listSheetTitle">Platser</h2>
+              <p id="listSheetSubtitle" class="list-sheet-subtitle">0 platser i uppdraget</p>
+            </div>
+            <div class="list-sheet-spacer"></div>
+          </div>
+          <div id="placesList" class="places-list"></div>
+        </aside>
+
+        <!-- ─── Bottom sheet: uppdragsstatus ──────────────────── -->
+        <div class="map-bottom-sheet">
+          <div class="map-bottom-header">
+            <div class="map-bottom-copy">
+              <h2 id="activeAssignmentTitle"></h2>
+              <div class="map-bottom-meta">
+                <span id="assignmentPlaceCount">0 platser</span>
+                <span class="dot-separator">•</span>
+                <span id="assignmentVisitedCount">0 besökta</span>
+              </div>
+              <div id="assignmentMysteryHint" class="map-bottom-hint hidden"></div>
+            </div>
+            <button id="assignmentPrimaryAction" class="type-pill action-pill hidden" type="button">Nästa steg</button>
+            <div id="assignmentTypeBadge" class="type-pill hidden">uppdrag</div>
+          </div>
+          <div class="map-bottom-footer">
+            <button id="leaveAssignmentBtn" class="map-leave-btn" type="button">Avsluta uppdrag</button>
+          </div>
+        </div>
+
+        <!-- ═══ Bottom navigation ════════════════════════════════ -->
+<nav id="bottomNav" class="bottom-nav" aria-label="Navigering">
+  <button class="bottom-nav-item" data-nav="map" type="button" aria-label="Karta">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+      <line x1="9" y1="3" x2="9" y2="18"/>
+      <line x1="15" y1="6" x2="15" y2="21"/>
+    </svg>
+    <span class="bottom-nav-label">Karta</span>
+  </button>
+  <button class="bottom-nav-item" data-nav="list" type="button" aria-label="Platslista">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6"/>
+      <line x1="8" y1="12" x2="21" y2="12"/>
+      <line x1="8" y1="18" x2="21" y2="18"/>
+      <circle cx="3" cy="6" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="3" cy="12" r="1" fill="currentColor" stroke="none"/>
+      <circle cx="3" cy="18" r="1" fill="currentColor" stroke="none"/>
+    </svg>
+    <span class="bottom-nav-label">Platser</span>
+    <span id="bottomNavListBadge" class="bottom-nav-badge hidden"></span>
+  </button>
+  <!-- Utredning — visas bara i mystery-läge (CSS styr via data-mode) -->
+  <button class="bottom-nav-item bottom-nav-mystery" data-nav="notes" type="button" aria-label="Utredning">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <line x1="16" y1="13" x2="8" y2="13"/>
+      <line x1="16" y1="17" x2="8" y2="17"/>
+    </svg>
+    <span class="bottom-nav-label">Utredning</span>
+    <span id="bottomNavEvidenceBadge" class="bottom-nav-badge hidden"></span>
+  </button>
+  <!-- Topplista — visas bara i trail-läge med grupp -->
+  <button class="bottom-nav-item bottom-nav-trail" data-nav="leaderboard" type="button" aria-label="Topplista" id="bottomNavLeaderboardBtn">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    <span class="bottom-nav-label">Topplista</span>
+  </button>
+  <button class="bottom-nav-item bottom-nav-leave" data-nav="leave" type="button" aria-label="Lämna uppdraget">
+    <svg class="bottom-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+    <span class="bottom-nav-label">Avsluta</span>
+  </button>
+</nav>
+        <!-- Topplista-overlay -->
+        <div id="leaderboardBackdrop" class="sheet-backdrop notes-backdrop"></div>
+        <aside id="leaderboardOverlay" class="notes-sheet" aria-label="Topplista">
+          <div class="sheet-handle"></div>
+          <div class="detail-sheet-header">
+            <button id="closeLeaderboardBtn" class="sheet-close-btn" type="button">Stäng</button>
+            <div class="detail-sheet-title-wrap"><h2 id="leaderboardTitle">Topplista</h2></div>
+            <button id="refreshLeaderboardBtn" class="sheet-link-btn" type="button">↻ Uppdatera</button>
+          </div>
+          <div id="leaderboardBody" class="notes-sheet-body"></div>
+        </aside>
+
+        <!-- Anteckningar-overlay -->
+        <div id="notesBackdrop" class="sheet-backdrop notes-backdrop"></div>
+        <aside id="notesOverlay" class="notes-sheet" aria-label="Anteckningar och bevis">
+          <div class="sheet-handle"></div>
+          <div class="detail-sheet-header">
+            <button id="closeNotesBtn" class="sheet-close-btn" type="button">Stäng</button>
+            <div class="detail-sheet-title-wrap"><h2>Mordgåta</h2></div>
+            <div class="list-sheet-spacer"></div>
+          </div>
+          <div class="notes-tab-bar">
+            <button id="notesTabBtn" class="notes-tab-btn notes-tab-active" type="button">Anteckningar</button>
+            <button id="evidenceTabBtn" class="notes-tab-btn" type="button">Bevis</button>
+            <button id="suspectTabBtn" class="notes-tab-btn" type="button">Misstänkta</button>
+          </div>
+          <div id="notesTabContent" class="notes-sheet-body">
+            <label class="notes-label" for="notesTextarea">Skriv sådant du vill komma ihåg</label>
+            <textarea id="notesTextarea" class="notes-textarea" placeholder="Skriv anteckningar här..."></textarea>
+            <div id="notesStatus" class="notes-status">Tomt anteckningsblock.</div>
+          </div>
+          <div id="evidenceTabContent" class="notes-sheet-body" style="display:none">
+            <div id="evidenceList" class="evidence-list"></div>
+          </div>
+          <div id="suspectTabContent" class="notes-sheet-body" style="display:none">
+            <div id="suspectList" class="suspect-list"></div>
+          </div>
+        </aside>
+      </section>
+
+      <!-- ═══ PLATSDETALJ ═══════════════════════════════════════ -->
+      <section id="placeDetailView" class="view place-detail-overlay" aria-labelledby="detailPlaceTitle">
+        <div id="detailBackdrop" class="sheet-backdrop"></div>
+        <div class="detail-sheet">
+          <div class="sheet-handle"></div>
+          <div class="detail-sheet-header">
+            <button id="backToMapBtn" class="sheet-close-btn" type="button">Stäng</button>
+            <div class="detail-sheet-title-wrap">
+              <h2 id="detailPlaceTitle">Plats</h2>
+            </div>
+            <button id="backToListBtn" class="sheet-link-btn" type="button">Platslista</button>
+          </div>
+          <div id="detailHeroMedia" class="detail-hero-media hidden"></div>
+          <div class="detail-meta-stack">
+            <div class="eyebrow" id="detailPlaceOrder"></div>
+            <div id="detailPlaceDescription" class="detail-summary"></div>
+          </div>
+          <div id="detailCtaRow" class="detail-cta-row">
+            <button id="detailRegisterVisitBtn" class="primary" type="button">Registrera besök</button>
+          </div>
+          <div id="detailContentList" class="content-blocks"></div>
+        </div>
+      </section>
+
+      <!-- ═══ AVSLUTNINGSVY ═════════════════════════════════════ -->
+      <section id="completionView" class="view completion-overlay" aria-labelledby="completionTitle">
+        <div id="completionBackdrop" class="sheet-backdrop"></div>
+        <div class="completion-sheet">
+          <div class="sheet-handle"></div>
+          <div class="detail-sheet-header">
+            <button id="completionBackBtn" class="sheet-close-btn" type="button">Tillbaka</button>
+            <div class="detail-sheet-title-wrap"><h2 id="completionTitle">Avsluta uppdrag</h2></div>
+            <div class="list-sheet-spacer"></div>
+          </div>
+          <div class="completion-intro">
+            <div class="eyebrow">Sammanfattning</div>
+            <p id="completionLead" class="detail-summary">Här ser du hur långt du kommit innan du avslutar uppdraget.</p>
+          </div>
+          <div class="completion-stats">
+            <article class="completion-stat-card"><div class="completion-stat-label">Platser</div><div id="completionPlacesStat" class="completion-stat-value">0 / 0</div></article>
+            <article class="completion-stat-card"><div class="completion-stat-label">Svar</div><div id="completionAnswersStat" class="completion-stat-value">0</div></article>
+            <article class="completion-stat-card"><div class="completion-stat-label">Rätt</div><div id="completionCorrectStat" class="completion-stat-value">0</div></article>
+            <article class="completion-stat-card"><div class="completion-stat-label">Poäng</div><div id="completionScoreStat" class="completion-stat-value">0</div></article>
+          </div>
+          <div id="completionModeNotice" class="completion-notice"></div>
+          <div id="completionRecentList" class="completion-recent-list"></div>
+          <div class="completion-actions">
+            <button id="completionConfirmBtn" class="primary" type="button">Avsluta uppdrag</button>
+            <button id="completionCancelBtn" class="secondary" type="button">Fortsätt uppdraget</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ AUTO-BEKRÄFTELSE ══════════════════════════════════ -->
+      <section id="autoCompleteView" class="view autocomplete-overlay" aria-modal="true" aria-labelledby="autoCompleteTitle">
+        <div id="autoCompleteBackdrop" class="autocomplete-backdrop"></div>
+        <div class="autocomplete-sheet">
+          <div class="sheet-handle"></div>
+          <div class="autocomplete-celebration">
+            <div class="autocomplete-emoji" aria-hidden="true">🎉</div>
+            <h2 id="autoCompleteTitle" class="autocomplete-heading">Uppdraget klart!</h2>
+            <p id="autoCompleteLead" class="autocomplete-lead">Du har klarat alla platser och frågor.</p>
+          </div>
+          <div id="autoCompleteSummaryWrap" class="autocomplete-summary-wrap hidden">
+            <div class="completion-stats autocomplete-stats">
+              <article class="completion-stat-card"><div class="completion-stat-label">Platser</div><div id="autoCompletePlacesStat" class="completion-stat-value">0 / 0</div></article>
+              <article class="completion-stat-card"><div class="completion-stat-label">Svar</div><div id="autoCompleteAnswersStat" class="completion-stat-value">0</div></article>
+              <article class="completion-stat-card"><div class="completion-stat-label">Rätt</div><div id="autoCompleteCorrectStat" class="completion-stat-value">—</div></article>
+              <article class="completion-stat-card"><div class="completion-stat-label">Poäng</div><div id="autoCompleteScoreStat" class="completion-stat-value">—</div></article>
+            </div>
+            <div id="autoCompleteModeNotice" class="completion-notice"></div>
+            <div id="autoCompleteRecentList" class="completion-recent-list"></div>
+          </div>
+          <div class="autocomplete-actions">
+            <button id="autoCompleteSummaryToggleBtn" class="secondary" type="button">Visa sammanfattning</button>
+            <button id="autoCompleteFinishBtn" class="primary" type="button">Avsluta till startsidan</button>
+            <button id="autoCompleteContinueBtn" class="secondary" type="button">Stäng och fortsätt utforska</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ DIGITAL UPPDRAGSLISTA ═════════════════════════════ -->
+      <section id="digitalView" class="view card" aria-label="Digitalt uppdrag">
+        <div class="digital-header">
+          <div class="eyebrow">Digitalt uppdrag</div>
+          <h2 id="digitalTitle"></h2>
+          <p id="digitalProgress" class="digital-progress-text"></p>
+          <p id="digitalCountdown" class="digital-countdown hidden"></p>
+        </div>
+        <div id="digitalStepList" class="digital-step-list"></div>
+        <div class="digital-footer">
+          <button id="digitalNotesBtn" class="secondary hidden" type="button">✎ Anteckna</button>
+          <button id="digitalLeaveBtn" class="secondary" type="button">Avsluta uppdrag</button>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <template id="placeTemplate">
+    <button class="place-row" type="button">
+      <span class="place-row-dot" aria-hidden="true"></span>
+      <span class="place-row-main">
+        <span class="place-row-title"></span>
+        <span class="place-row-subtitle"></span>
+        <span class="place-row-meta"></span>
+      </span>
+      <span class="place-row-status"></span>
+      <span class="place-row-chevron" aria-hidden="true">›</span>
+    </button>
+  </template>
+
+  <div id="updateBanner" class="update-banner hidden">
+    En uppdatering finns tillgänglig
+    <button id="updateBannerBtn" class="update-banner-btn" type="button">Uppdatera nu</button>
+  </div>
+
+  <script src="/app/test/config.js"></script>
+  <script src="/app/test/app.js" type="module"></script>
+  <script src="/app/test/tour.js"></script>
+
+  <!-- Progress-pill: uppdateras från app.js state via polling -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      function updateHUDProgress() {
+        const s = window._spotOnState;
+        if (!s || !s.assignment) return;
+        const places  = s.assignment.places || [];
+        const visited = places.filter(p => s.progressByPlaceId?.[p.id]?.visited).length;
+        const total   = places.length;
+        const track   = document.getElementById('hudProgressTrack');
+        const count   = document.getElementById('hudProgressCount');
+        const name    = document.getElementById('hudAssignmentName');
+        if (count) count.textContent = `${visited}/${total}`;
+        if (name)  name.textContent  = s.assignment.title || '';
+        if (track && total > 0) {
+          track.innerHTML = Array.from({length: total}, (_, i) => {
+            const cls = i < visited ? 'done' : i === visited ? 'current' : 'pending';
+            return `<div class="hud-progress-seg ${cls}"></div>`;
+          }).join('');
+        }
+      }
+      setInterval(updateHUDProgress, 800);
+    });
+  </script>
+</body>
+</html>

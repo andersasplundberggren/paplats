@@ -1,0 +1,252 @@
+'use strict';
+
+const express = require('express');
+const crypto  = require('crypto');
+const { query, queryOne } = require('../../config/database');
+const { requireAdmin, requireTenantAdmin, requireAssignmentAccess } = require('../../middleware/auth');
+
+const router = express.Router();
+router.use(requireAdmin);
+
+// ─── Hjälp: generera slug ─────────────────────────────────────
+function toSlug(str) {
+  return str.toLowerCase()
+    .replace(/å/g,'a').replace(/ä/g,'a').replace(/ö/g,'o')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+}
+
+// ─── Hjälp: hämta uppdrag (med behörighetskontroll) ──────────
+async function getAssignment(id, tenantId, adminId, role) {
+  if (role === 'admin' || role === 'systemadmin') {
+    return queryOne(
+      'SELECT * FROM assignments WHERE id=? AND tenant_id=?',
+      [id, tenantId]
+    );
+  }
+  // Redaktör — måste vara tilldelad
+  return queryOne(
+    `SELECT a.* FROM assignments a
+     JOIN assignment_editors ae ON ae.assignment_id = a.id
+     WHERE a.id=? AND a.tenant_id=? AND ae.admin_id=?`,
+    [id, tenantId, adminId]
+  );
+}
+
+// ─── GET /admin/assignments ────────────────────────────────────
+router.get('/', async (req, res, next) => {
+  const { tenantId, adminId, adminRole } = req.session;
+  try {
+    let assignments;
+    if (adminRole === 'admin' || adminRole === 'systemadmin') {
+      assignments = await query(
+        `SELECT a.*,
+           COUNT(DISTINCT p.id) AS place_count,
+           COUNT(DISTINCT us.id) AS session_count
+         FROM assignments a
+         LEFT JOIN places p ON p.assignment_id = a.id
+         LEFT JOIN user_sessions us ON us.assignment_id = a.id
+         WHERE a.tenant_id = ?
+         GROUP BY a.id
+         ORDER BY a.created_at DESC`,
+        [tenantId]
+      );
+    } else {
+      // Redaktör ser bara tilldelade uppdrag
+      assignments = await query(
+        `SELECT a.*,
+           COUNT(DISTINCT p.id) AS place_count,
+           COUNT(DISTINCT us.id) AS session_count
+         FROM assignments a
+         JOIN assignment_editors ae ON ae.assignment_id = a.id AND ae.admin_id = ?
+         LEFT JOIN places p ON p.assignment_id = a.id
+         LEFT JOIN user_sessions us ON us.assignment_id = a.id
+         WHERE a.tenant_id = ?
+         GROUP BY a.id
+         ORDER BY a.created_at DESC`,
+        [adminId, tenantId]
+      );
+    }
+    res.render('admin/pages/assignments/list', {
+      title: 'Uppdrag', assignments,
+      success: req.flash('success')[0] || null,
+      error:   req.flash('error')[0]   || null,
+      csrfToken: req.csrfToken(),
+    });
+  } catch (err) { next(err); }
+});
+
+// ─── GET /admin/assignments/new ───────────────────────────────
+router.get('/new', requireTenantAdmin, (req, res) => {
+  res.render('admin/pages/assignments/form', {
+    title: 'Nytt uppdrag', assignment: null, formData: {},
+    error: req.flash('error')[0] || null, csrfToken: req.csrfToken(),
+  });
+});
+
+// ─── POST /admin/assignments ───────────────────────────────────
+router.post('/', requireTenantAdmin, async (req, res, next) => {
+  const tenantId = req.session.tenantId;
+  const {
+    title, description, intro_title, intro_body, type = 'exploration', access_code,
+    status = 'draft', activation_starts_at, activation_ends_at,
+    max_participants, unlock_mode = 'free', grading_mode = 'auto',
+    difficulty = 'medium', estimated_minutes,
+  } = req.body;
+
+  if (!title || !access_code) {
+    req.flash('error', 'Titel och åtkomstkod krävs.');
+    return res.redirect('/admin/assignments/new');
+  }
+
+  try {
+    const slug          = toSlug(title) + '-' + Date.now();
+    const results_token = crypto.randomBytes(24).toString('hex');
+
+    const result = await query(
+      `INSERT INTO assignments
+         (tenant_id, title, slug, description, intro_title, intro_body, type, access_code, status,
+          activation_starts_at, activation_ends_at, max_participants,
+          unlock_mode, grading_mode, difficulty, estimated_minutes, results_token)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+      [
+        tenantId, title.trim(), slug, description || null, intro_title || null, intro_body || null,
+        type, access_code.trim().toUpperCase(), status,
+        activation_starts_at || null, activation_ends_at || null,
+        max_participants ? parseInt(max_participants) : null,
+        unlock_mode, grading_mode, difficulty,
+        estimated_minutes ? parseInt(estimated_minutes) : null,
+        results_token,
+      ]
+    );
+    req.flash('success', 'Uppdraget skapades.');
+    res.redirect(`/admin/assignments/${result.insertId}/places`);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      req.flash('error', 'Åtkomstkoden används redan.');
+      return res.redirect('/admin/assignments/new');
+    }
+    next(err);
+  }
+});
+
+// ─── GET /admin/assignments/:id/edit ──────────────────────────
+router.get('/:id(\\d+)/edit', requireAssignmentAccess, async (req, res, next) => {
+  const { tenantId, adminId, adminRole } = req.session;
+  try {
+    const assignment = await getAssignment(req.params.id, tenantId, adminId, adminRole);
+    if (!assignment) return res.status(404).render('admin/pages/error',
+      { title:'404', message:'Uppdraget hittades inte.', stack:null, detail:null });
+    res.render('admin/pages/assignments/form', {
+      title: `Redigera: ${assignment.title}`, assignment, formData: {},
+      error: req.flash('error')[0] || null,
+      success: req.flash('success')[0] || null,
+      csrfToken: req.csrfToken(),
+    });
+  } catch (err) { next(err); }
+});
+
+// ─── POST /admin/assignments/:id ──────────────────────────────
+router.post('/:id(\\d+)', requireAssignmentAccess, async (req, res, next) => {
+  const { tenantId, adminId, adminRole } = req.session;
+  const { id } = req.params;
+  const {
+    title, description, intro_title, intro_body, type, access_code, status,
+    activation_starts_at, activation_ends_at, max_participants,
+    unlock_mode, grading_mode, difficulty, estimated_minutes,
+  } = req.body;
+
+  try {
+    const existing = await getAssignment(id, tenantId, adminId, adminRole);
+    if (!existing) return res.status(403).send('Ej tillåtet.');
+
+    await query(
+      `UPDATE assignments SET
+         title=?, description=?, intro_title=?, intro_body=?, type=?, access_code=?, status=?,
+         activation_starts_at=?, activation_ends_at=?, max_participants=?,
+         unlock_mode=?, grading_mode=?, difficulty=?, estimated_minutes=?
+       WHERE id=? AND tenant_id=?`,
+      [
+        title.trim(), description || null, intro_title || null, intro_body || null, type,
+        access_code.trim().toUpperCase(), status,
+        activation_starts_at || null, activation_ends_at || null,
+        max_participants ? parseInt(max_participants) : null,
+        unlock_mode, grading_mode, difficulty,
+        estimated_minutes ? parseInt(estimated_minutes) : null,
+        id, tenantId,
+      ]
+    );
+    req.flash('success', 'Uppdraget sparades.');
+    res.redirect(`/admin/assignments/${id}/edit`);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') {
+      req.flash('error', 'Åtkomstkoden används redan.');
+      return res.redirect(`/admin/assignments/${id}/edit`);
+    }
+    next(err);
+  }
+});
+
+// ─── POST /admin/assignments/:id/publish ─────────────────────
+router.post('/:id(\\d+)/publish', requireAssignmentAccess, async (req, res, next) => {
+  const { tenantId, adminId, adminRole } = req.session;
+  const { id } = req.params;
+  try {
+    const a = await getAssignment(id, tenantId, adminId, adminRole);
+    if (!a) return res.status(403).send('Ej tillåtet.');
+    const newStatus = a.status === 'published' ? 'draft' : 'published';
+    await query('UPDATE assignments SET status=? WHERE id=?', [newStatus, id]);
+    req.flash('success', newStatus === 'published' ? 'Publicerat.' : 'Avpublicerat.');
+  } catch (err) { req.flash('error', 'Kunde inte ändra status.'); }
+  res.redirect(`/admin/assignments/${id}/places`);
+});
+
+// ─── POST /admin/assignments/:id/delete ──────────────────────
+router.post('/:id(\\d+)/delete', requireTenantAdmin, async (req, res, next) => {
+  const { tenantId, adminId, adminRole } = req.session;
+  try {
+    const a = await getAssignment(req.params.id, tenantId, adminId, adminRole);
+    if (!a) return res.status(403).send('Ej tillåtet.');
+    await query('DELETE FROM assignments WHERE id=? AND tenant_id=?', [req.params.id, tenantId]);
+    req.flash('success', 'Uppdraget raderades.');
+  } catch (err) { req.flash('error', 'Kunde inte radera.'); }
+  res.redirect('/admin/assignments');
+});
+
+// ─── GET /admin/assignments/:id/places ────────────────────────
+router.get('/:id(\\d+)/places', requireAssignmentAccess, async (req, res, next) => {
+  const { tenantId, adminId, adminRole } = req.session;
+  try {
+    const assignment = await getAssignment(req.params.id, tenantId, adminId, adminRole);
+    if (!assignment) return res.status(404).render('admin/pages/error',
+      { title:'404', message:'Uppdraget hittades inte.', stack:null, detail:null });
+
+
+    console.log("[PLACES DEBUG] req.params.id=" + req.params.id + " assignment.id=" + (assignment && assignment.id));
+ const places = await query(
+  `SELECT
+     p.*,
+     COALESCE(cb.block_count, 0) AS block_count
+   FROM places p
+   LEFT JOIN (
+     SELECT place_id, COUNT(*) AS block_count
+     FROM place_content_blocks
+     GROUP BY place_id
+   ) cb ON cb.place_id = p.id
+   WHERE p.assignment_id = ?
+   ORDER BY p.stop_order ASC, p.id ASC`,
+  [assignment.id]
+);
+
+    res.render('admin/pages/assignments/places', {
+      title:        `Platser: ${assignment.title}`,
+      assignment,
+      places,
+      mediaBaseUrl: process.env.MEDIA_BASE_URL || '',
+      success:      req.flash('success')[0] || null,
+      error:        req.flash('error')[0]   || null,
+      csrfToken:    req.csrfToken(),
+    });
+  } catch (err) { next(err); }
+});
+
+module.exports = router;

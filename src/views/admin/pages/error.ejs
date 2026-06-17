@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title || 'Fel' %> — GeoExp Admin</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 2.5rem;
+      max-width: 680px;
+      width: 100%;
+    }
+    .icon { font-size: 3rem; margin-bottom: 1rem; }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f87171;
+      margin-bottom: 0.75rem;
+    }
+    .message {
+      font-size: 1.05rem;
+      color: #cbd5e1;
+      margin-bottom: 1.5rem;
+      line-height: 1.6;
+    }
+    /* Stack trace box — alltid synlig, hjälper felsökning */
+    .stack-box {
+      background: #0f172a;
+      border: 1px solid #475569;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 1.5rem;
+      overflow-x: auto;
+    }
+    .stack-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+    }
+    .stack-box pre {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.78rem;
+      color: #fbbf24;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+    }
+    .actions { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+    .btn {
+      display: inline-block;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-ghost {
+      background: transparent;
+      color: #94a3b8;
+      border: 1px solid #334155;
+    }
+    .btn-ghost:hover { background: #1e293b; color: #e2e8f0; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">⚠️</div>
+    <h1><%= title || 'Fel' %></h1>
+    <p class="message"><%= message || 'Ett oväntat fel inträffade.' %></p>
+
+    <%
+      // Visa alltid stack/detaljer — detta är ett intern admingränssnitt
+      const detail = locals.stack || locals.detail || locals.error || null;
+    %>
+    <% if (detail) { %>
+    <div class="stack-box">
+      <div class="stack-label">Feldetaljer (felsökning)</div>
+      <pre><%= detail %></pre>
+    </div>
+    <% } %>
+
+    <div class="actions">
+      <a href="/admin/dashboard" class="btn btn-primary">Till dashboard</a>
+      <a href="/admin/login" class="btn btn-ghost">Logga in igen</a>
+      <a href="javascript:history.back()" class="btn btn-ghost">Tillbaka</a>
+    </div>
+  </div>
+</body>
+</html>

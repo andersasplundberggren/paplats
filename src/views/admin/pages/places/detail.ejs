@@ -1,0 +1,121 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <div>
+    <h1><%= place.title %></h1>
+    <span class="badge <%= place.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+      <%= place.status %>
+    </span>
+    <% if (place.category_name) { %>
+      <span class="badge badge-blue"><%= place.category_name %></span>
+    <% } %>
+  </div>
+  <div class="header-actions">
+    <a href="/admin/places/<%= place.id %>/edit" class="btn btn-primary">Edit</a>
+    <a href="/admin/places" class="btn btn-ghost">← All places</a>
+  </div>
+</div>
+
+<div class="detail-grid">
+  <div class="detail-main">
+    <div class="card">
+      <h2 class="card-title">Description</h2>
+      <% if (place.short_description) { %>
+        <p class="short-desc"><strong><%= place.short_description %></strong></p>
+      <% } %>
+      <% if (place.long_description) { %>
+        <div class="long-desc"><%- place.long_description.replace(/\n/g,'<br/>') %></div>
+      <% } else { %>
+        <p class="text-muted">No description.</p>
+      <% } %>
+    </div>
+
+    <div class="card" style="margin-top:1.5rem">
+      <h2 class="card-title">Media (<%= place.media.length %>)</h2>
+      <% if (place.media.length === 0) { %>
+        <p class="text-muted">No media attached.</p>
+      <% } else { %>
+        <div class="media-grid">
+          <% place.media.forEach(m => { %>
+            <div class="media-thumb-card">
+              <% if (m.type === 'image') { %>
+                <img src="<%= mediaBaseUrl %>/<%= m.stored_path %>" alt="<%= m.alt_text || '' %>" class="media-thumb" />
+              <% } else { %>
+                <video src="<%= mediaBaseUrl %>/<%= m.stored_path %>" class="media-thumb" controls preload="metadata"></video>
+              <% } %>
+              <div class="media-thumb-meta">
+                <span class="badge <%= m.usage_type === 'ar_overlay' ? 'badge-purple' : (m.usage_type === 'hero' ? 'badge-orange' : 'badge-blue') %>">
+                  <%= m.usage_type %>
+                </span>
+                <span class="text-muted">Order: <%= m.display_order %></span>
+                <% if (m.usage_type === 'ar_overlay') { %>
+                  <span class="text-muted">Opacity: <%= m.opacity_default %></span>
+                <% } %>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      <% } %>
+    </div>
+  </div>
+
+  <aside class="detail-sidebar">
+    <div class="card">
+      <h2 class="card-title">Location</h2>
+      <dl class="detail-list">
+        <dt>Latitude</dt>
+        <dd class="monospace"><%= parseFloat(place.latitude).toFixed(8) %></dd>
+        <dt>Longitude</dt>
+        <dd class="monospace"><%= parseFloat(place.longitude).toFixed(8) %></dd>
+        <dt>Activation radius</dt>
+        <dd><%= place.activation_radius_meters %> m</dd>
+        <% if (place.preferred_bearing_degrees !== null) { %>
+          <dt>Preferred bearing</dt>
+          <dd><%= parseFloat(place.preferred_bearing_degrees).toFixed(1) %>°</dd>
+        <% } %>
+        <% if (place.preferred_distance_meters !== null) { %>
+          <dt>Preferred distance</dt>
+          <dd><%= place.preferred_distance_meters %> m</dd>
+        <% } %>
+      </dl>
+      <a
+        href="https://www.openstreetmap.org/?mlat=<%= place.latitude %>&mlon=<%= place.longitude %>#map=17/<%= place.latitude %>/<%= place.longitude %>"
+        class="btn btn-ghost btn-sm"
+        target="_blank"
+        rel="noreferrer"
+      >View on map ↗</a>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <h2 class="card-title">Meta</h2>
+      <dl class="detail-list">
+        <dt>ID</dt><dd><%= place.id %></dd>
+        <dt>Slug</dt><dd class="monospace"><%= place.slug %></dd>
+        <dt>Sort order</dt><dd><%= place.sort_order %></dd>
+        <dt>Created</dt><dd><%= new Date(place.created_at).toLocaleDateString() %></dd>
+        <dt>Updated</dt><dd><%= new Date(place.updated_at).toLocaleDateString() %></dd>
+      </dl>
+    </div>
+
+    <div class="card" style="margin-top:1rem">
+      <h2 class="card-title">Danger zone</h2>
+      <form method="POST" action="/admin/places/<%= place.id %>/publish">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn btn-secondary btn-full">
+          <%= place.status === 'published' ? 'Unpublish' : 'Publish' %>
+        </button>
+      </form>
+      <button
+        class="btn btn-danger btn-full"
+        style="margin-top:.5rem"
+        onclick="confirmDelete('/admin/places/<%= place.id %>/delete', '<%= place.title.replace(/'/g, '\\\'') %>', this)"
+      >Delete place</button>
+    </div>
+  </aside>
+</div>
+
+<form id="delete-form" method="POST" style="display:none">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+</form>
+
+<%- include('../../partials/footer') %>

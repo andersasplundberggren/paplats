@@ -1,0 +1,365 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<style>
+  .block-card { background:var(--color-bg,#f8fafc);border:1px solid var(--color-border,#e2e8f0);border-radius:10px;padding:1.25rem;margin-bottom:1rem; }
+  .block-type-badge { display:inline-block;padding:.2rem .6rem;border-radius:5px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em; }
+  .type-text      { background:#e0f2fe;color:#0369a1; }
+  .type-image     { background:#dcfce7;color:#15803d; }
+  .type-video     { background:#fef9c3;color:#854d0e; }
+  .type-audio     { background:#f3e8ff;color:#7e22ce; }
+  .type-ar_overlay{ background:#fce7f3;color:#9d174d; }
+  .type-question  { background:#ffedd5;color:#c2410c; }
+  .type-clue      { background:#f1f5f9;color:#475569; }
+  .type-solution  { background:#d1fae5;color:#065f46; }
+  .media-thumb { width:60px;height:45px;object-fit:cover;border-radius:5px;border:1px solid var(--color-border); }
+</style>
+
+<div class="page-header">
+  <h1>Innehåll — <%= place.title %></h1>
+  <div class="header-actions">
+    <a href="/admin/assignments/<%= place.assignment_id %>/places" class="btn btn-ghost">← <%= place.assignment_title %></a>
+    <a href="/admin/places/<%= place.id %>/edit" class="btn btn-ghost">Redigera plats</a>
+  </div>
+</div>
+
+<div class="content-columns" style="grid-template-columns:1fr 360px;gap:2rem;align-items:start">
+
+  <!-- Befintliga block -->
+  <div>
+    <% if (blocks.length === 0) { %>
+      <div class="card" style="text-align:center;padding:2.5rem">
+        <p style="color:var(--color-muted)">Inga innehållsblock ännu. Lägg till från panelen till höger.</p>
+      </div>
+    <% } else { %>
+      <% blocks.forEach(block => { %>
+      <div class="block-card">
+        <div style="display:flex;align-items:flex-start;gap:1rem">
+
+          <!-- Ikon/förhandsgranskning -->
+          <div style="flex-shrink:0">
+            <% if (block.media_type === 'image' && block.stored_path) { %>
+              <img src="<%= mediaBaseUrl %>/<%= block.stored_path %>" class="media-thumb" />
+            <% } else if (block.media_type === 'video') { %>
+              <div class="media-thumb" style="background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🎬</div>
+            <% } else if (block.media_type === 'audio') { %>
+              <div class="media-thumb" style="background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🔊</div>
+            <% } else { %>
+              <div class="media-thumb" style="background:var(--color-bg-alt,#e2e8f0);display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                <% if (block.block_type === 'text') { %>📝
+                <% } else if (block.block_type === 'question') { %>❓
+                <% } else if (block.block_type === 'clue') { %>🔍
+                <% } else { %>✅<% } %>
+              </div>
+            <% } %>
+          </div>
+
+          <!-- Info -->
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+              <span class="block-type-badge type-<%= block.block_type %>"><%= block.block_type %></span>
+              <span style="font-size:.75rem;color:var(--color-muted)">Ordning <%= block.sort_order %></span>
+              <% if (block.block_type === 'clue' && block.is_hidden) { %>
+                <span style="font-size:.72rem;background:#fef3c7;color:#92400e;padding:.1rem .4rem;border-radius:4px">Dold</span>
+              <% } %>
+            </div>
+            <% if (block.title) { %><strong style="font-size:.9rem"><%= block.title %></strong><% } %>
+            <% if (block.body) { %><p style="font-size:.82rem;color:var(--color-muted);margin:.25rem 0 0;white-space:pre-line"><%= block.body.substring(0,120) %><%= block.body.length > 120 ? '…' : '' %></p><% } %>
+            <% if (block.original_filename) { %><p style="font-size:.78rem;color:var(--color-muted);margin:.2rem 0 0"><%= block.original_filename %></p><% } %>
+            <% if (block.block_type === 'question') { %>
+              <div style="font-size:.78rem;color:var(--color-muted);margin-top:.3rem">
+                A: <%= block.option_a %> &nbsp; B: <%= block.option_b %>
+                <% if (block.option_c) { %>&nbsp; C: <%= block.option_c %><% } %>
+                <% if (block.option_d) { %>&nbsp; D: <%= block.option_d %><% } %>
+                <br><span style="color:green">Rätt: <%= block.correct_option && block.correct_option.toUpperCase() %> &nbsp; <%= block.points %> poäng</span>
+              </div>
+            <% } %>
+          </div>
+
+          <!-- Redigera / Ta bort -->
+          <div style="display:flex;gap:.35rem;flex-shrink:0">
+            <button type="button" class="btn btn-ghost btn-sm"
+              onclick="toggleEditForm(<%= block.id %>)">Redigera</button>
+            <form method="POST" action="/admin/content/<%= place.id %>/blocks/<%= block.id %>/delete">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-danger btn-sm"
+                onclick="return confirm('Ta bort detta block?')">✕</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Inline-redigeringsformulär (dolt som standard) -->
+        <div id="edit-<%= block.id %>" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border)">
+          <form method="POST" action="/admin/content/<%= place.id %>/blocks/<%= block.id %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <div class="form-row">
+              <div class="form-group" style="flex:0 0 80px">
+                <label style="font-size:.75rem">Ordning</label>
+                <input type="number" name="sort_order" value="<%= block.sort_order %>"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <% if (block.block_type !== 'question' && block.block_type !== 'solution') { %>
+              <div class="form-group" style="flex:1">
+                <label style="font-size:.75rem">Titel</label>
+                <input type="text" name="title" value="<%= block.title || '' %>"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <% } %>
+            </div>
+            <% if (block.block_type === 'text' || block.block_type === 'clue') { %>
+            <div class="form-group">
+              <label style="font-size:.75rem">Text</label>
+              <textarea name="body" rows="3"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.body || '' %></textarea>
+            </div>
+            <% if (block.block_type === 'clue') { %>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer">
+                <input type="checkbox" name="is_hidden" value="1" <%= block.is_hidden ? 'checked' : '' %> />
+                Dold — visas bara när användaren begär ledtråd
+              </label>
+            </div>
+            <% } %>
+            <% } %>
+            <% if (block.block_type === 'ar_overlay' || block.block_type === 'image') { %>
+            <div class="form-row">
+              <div class="form-group">
+                <label style="font-size:.75rem">Opacitet (0.05–1.0)</label>
+                <input type="number" name="opacity_default" step="0.05" min="0.05" max="1"
+                       value="<%= block.opacity_default || 1.0 %>"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <div class="form-group">
+                <label style="font-size:.75rem">Rotation</label>
+                <select name="display_rotation" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                  <option value="0"   <%= block.display_rotation == 0   ? 'selected' : '' %>>0°</option>
+                  <option value="90"  <%= block.display_rotation == 90  ? 'selected' : '' %>>90°</option>
+                  <option value="180" <%= block.display_rotation == 180 ? 'selected' : '' %>>180°</option>
+                  <option value="-90" <%= block.display_rotation == -90 ? 'selected' : '' %>>-90°</option>
+                </select>
+              </div>
+            </div>
+            <% } %>
+            <!-- Dold input för fält som inte redigeras -->
+            <input type="hidden" name="body"             value="<%= block.body || '' %>" />
+            <input type="hidden" name="media_asset_id"   value="<%= block.media_asset_id || '' %>" />
+            <input type="hidden" name="opacity_default"  value="<%= block.opacity_default || 1.0 %>" />
+            <input type="hidden" name="display_rotation" value="<%= block.display_rotation || 0 %>" />
+            <input type="hidden" name="option_a"         value="<%= block.option_a || '' %>" />
+            <input type="hidden" name="option_b"         value="<%= block.option_b || '' %>" />
+            <input type="hidden" name="option_c"         value="<%= block.option_c || '' %>" />
+            <input type="hidden" name="option_d"         value="<%= block.option_d || '' %>" />
+            <input type="hidden" name="correct_option"   value="<%= block.correct_option || '' %>" />
+            <input type="hidden" name="explanation"      value="<%= block.explanation || '' %>" />
+            <input type="hidden" name="points"           value="<%= block.points || 10 %>" />
+            <input type="hidden" name="is_hidden"        value="0" />
+            <input type="hidden" name="solution_answer"  value="<%= block.solution_answer || '' %>" />
+            <input type="hidden" name="solution_hint"    value="<%= block.solution_hint || '' %>" />
+            <input type="hidden" name="solution_points"  value="<%= block.solution_points || 0 %>" />
+            <button type="submit" class="btn btn-primary btn-sm">Spara</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditForm(<%= block.id %>)">Avbryt</button>
+          </form>
+        </div>
+      </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <!-- Lägg till block -->
+  <div style="position:sticky;top:1rem">
+    <div class="card">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1rem">Lägg till innehåll</h3>
+
+      <form method="POST" action="/admin/content/<%= place.id %>" id="add-block-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+        <div class="form-group">
+          <label style="font-size:.82rem">Typ</label>
+          <select name="block_type" id="block-type-select" onchange="updateBlockForm(this.value)"
+                  style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px">
+            <option value="text">📝 Text</option>
+            <option value="image">🖼️ Bild</option>
+            <option value="video">🎬 Video</option>
+            <option value="audio">🔊 Ljud</option>
+            <option value="ar_overlay">✨ AR-overlay</option>
+            <option value="question">❓ Fråga (tipspromenad)</option>
+            <option value="clue">🔍 Ledtråd (gåta)</option>
+            <option value="solution">✅ Lösning (gåta)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:.82rem">Ordning</label>
+          <input type="number" name="sort_order" value="<%= blocks.length %>" min="0"
+                 style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+        </div>
+
+        <!-- Text/Clue -->
+        <div id="field-title" class="form-group">
+          <label style="font-size:.82rem">Titel <span class="hint">valfritt</span></label>
+          <input type="text" name="title" placeholder="T.ex. Om byggnaden"
+                 style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+        </div>
+        <div id="field-body" class="form-group">
+          <label style="font-size:.82rem">Text</label>
+          <textarea name="body" rows="4"
+            style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+            placeholder="Skriv texten här…"></textarea>
+        </div>
+
+        <!-- Media-väljare -->
+        <div id="field-media" style="display:none">
+          <label style="font-size:.82rem;display:block;margin-bottom:.4rem">Välj mediafil</label>
+          <input type="hidden" name="media_asset_id" id="selected-media-id" />
+          <div id="media-preview" style="margin-bottom:.5rem"></div>
+          <div id="media-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;max-height:220px;overflow-y:auto;border:1px solid var(--color-border);border-radius:8px;padding:.5rem">
+            <% if (mediaAssets.length === 0) { %>
+              <p style="grid-column:1/-1;text-align:center;font-size:.78rem;color:var(--color-muted);padding:.5rem">
+                Inga mediafiler. <a href="/admin/media/upload">Ladda upp →</a>
+              </p>
+            <% } else { %>
+              <% mediaAssets.forEach(ma => { %>
+              <div onclick="selectMedia(<%= ma.id %>, '<%= ma.type %>', '<%= mediaBaseUrl %>/<%= ma.stored_path %>', '<%= ma.original_filename.replace(/'/g, "\\'") %>')"
+                   id="media-item-<%= ma.id %>"
+                   style="cursor:pointer;border:2px solid var(--color-border,#e2e8f0);border-radius:6px;overflow:hidden;transition:border-color .15s">
+                <% if (ma.type === 'image') { %>
+                  <img src="<%= mediaBaseUrl %>/<%= ma.stored_path %>" style="width:100%;height:50px;object-fit:cover" />
+                <% } else { %>
+                  <div style="height:50px;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                    <%= ma.type === 'video' ? '🎬' : '🔊' %>
+                  </div>
+                <% } %>
+                <div style="padding:.2rem .3rem;font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= ma.original_filename %></div>
+              </div>
+              <% }) %>
+            <% } %>
+          </div>
+          <div id="field-ar-settings" style="display:none;margin-top:.75rem">
+            <div class="form-row">
+              <div>
+                <label style="font-size:.75rem">Opacitet</label>
+                <input type="number" name="opacity_default" value="1.0" step="0.05" min="0.05" max="1"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <div>
+                <label style="font-size:.75rem">Rotation</label>
+                <select name="display_rotation" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                  <option value="0">0°</option><option value="90">90°</option>
+                  <option value="180">180°</option><option value="-90">-90°</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fråga -->
+        <div id="field-question" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Frågetext <span class="required">*</span></label>
+            <textarea name="body" rows="2"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="Vad heter…?"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
+            <% ['a','b','c','d'].forEach(opt => { %>
+            <div>
+              <label style="font-size:.72rem;display:flex;align-items:center;gap:.3rem">
+                <input type="radio" name="correct_option" value="<%= opt %>"  />
+                Alt. <%= opt.toUpperCase() %> (rätt?)
+              </label>
+              <input type="text" name="option_<%= opt %>"
+                     
+                     placeholder="<%= opt === 'c' || opt === 'd' ? 'Valfritt' : '' %>"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.82rem" />
+            </div>
+            <% }) %>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label style="font-size:.75rem">Förklaring</label>
+              <input type="text" name="explanation" placeholder="Valfritt"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.82rem" />
+            </div>
+            <div class="form-group" style="flex:0 0 80px">
+              <label style="font-size:.75rem">Poäng</label>
+              <input type="number" name="points" value="10" min="0"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledtråd -->
+        <div id="field-clue" style="display:none">
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer">
+              <input type="checkbox" name="is_hidden" value="1" />
+              Dold — visas bara när användaren begär ledtråd
+            </label>
+          </div>
+        </div>
+
+        <!-- Lösning -->
+        <div id="field-solution" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Rätt svar (fritext)</label>
+            <input type="text" name="solution_answer" placeholder="Det rätta svaret"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Ledtråd</label>
+            <textarea name="solution_hint" rows="2" placeholder="Hint om användaren fastnar"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.75rem">Poäng för korrekt svar</label>
+            <input type="number" name="solution_points" value="10" min="0"
+                   style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.75rem">
+          + Lägg till block
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleEditForm(id) {
+  const el = document.getElementById('edit-' + id);
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function selectMedia(id, type, url, name) {
+  document.getElementById('selected-media-id').value = id;
+  document.querySelectorAll('[id^="media-item-"]').forEach(el => el.style.borderColor = 'var(--color-border,#e2e8f0)');
+  const el = document.getElementById('media-item-' + id);
+  if (el) el.style.borderColor = '#3b82f6';
+  const preview = document.getElementById('media-preview');
+  if (type === 'image') {
+    preview.innerHTML = '<img src="'+url+'" style="height:50px;border-radius:5px;margin-bottom:.3rem" /> <span style="font-size:.75rem">'+name+'</span>';
+  } else {
+    preview.innerHTML = '<span style="font-size:.85rem">'+(type==='video'?'🎬':'🔊')+' '+name+'</span>';
+  }
+}
+
+function updateBlockForm(type) {
+  const showBody     = ['text','clue'].includes(type);
+  const showMedia    = ['image','video','audio','ar_overlay'].includes(type);
+  const showQuestion = type === 'question';
+  const showClue     = type === 'clue';
+  const showSolution = type === 'solution';
+  const showAR       = type === 'ar_overlay';
+
+  document.getElementById('field-title').style.display    = (showBody || showClue || showSolution) ? '' : 'none';
+  document.getElementById('field-body').style.display     = showBody   ? '' : 'none';
+  document.getElementById('field-media').style.display    = showMedia  ? '' : 'none';
+  document.getElementById('field-question').style.display = showQuestion ? '' : 'none';
+  document.getElementById('field-clue').style.display     = showClue   ? '' : 'none';
+  document.getElementById('field-solution').style.display = showSolution ? '' : 'none';
+  document.getElementById('field-ar-settings').style.display = showAR ? '' : 'none';
+}
+updateBlockForm('text');
+</script>
+
+<%- include('../../partials/footer') %>

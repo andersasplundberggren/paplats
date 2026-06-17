@@ -1,0 +1,107 @@
+<%
+  const isEdit = trail !== null;
+  const fd = (formData && Object.keys(formData).length) ? formData : (trail || {});
+  const val = (key) => fd[key] !== null && fd[key] !== undefined ? fd[key] : '';
+%>
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= isEdit ? 'Redigera promenad' : 'Ny tipspromenad' %></h1>
+  <% if (isEdit) { %>
+    <div class="header-actions">
+      <a href="/admin/trails/<%= trail.id %>/stops" class="btn btn-ghost">← Stopp</a>
+      <form method="POST" action="/admin/trails/<%= trail.id %>/publish" style="display:inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn <%= trail.status === 'published' ? 'btn-ghost' : 'btn-primary' %>">
+          <%= trail.status === 'published' ? 'Avpublicera' : 'Publicera' %>
+        </button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<form method="POST" action="<%= isEdit ? '/admin/trails/' + trail.id : '/admin/trails' %>" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <section class="form-section">
+    <h2 class="section-title">Grundinfo</h2>
+
+    <div class="form-group">
+      <label for="title">Titel <span class="required">*</span></label>
+      <input type="text" id="title" name="title" value="<%= val('title') %>" required maxlength="255" />
+    </div>
+
+    <div class="form-group">
+      <label for="description">Beskrivning
+        <span class="hint">Visas för användaren innan de startar promenaden.</span>
+      </label>
+      <textarea id="description" name="description" rows="4"><%= val('description') %></textarea>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="access_code">Åtkomstkod <span class="required">*</span>
+          <span class="hint">Unik kod användaren anger i appen. T.ex. BARN24 eller SLOTT.</span>
+        </label>
+        <input type="text" id="access_code" name="access_code"
+               value="<%= val('access_code') %>" required maxlength="20"
+               style="text-transform:uppercase;font-weight:700;letter-spacing:.05em"
+               placeholder="T.ex. BARN24" />
+      </div>
+
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          <option value="draft"     <%= val('status') !== 'published' ? 'selected' : '' %>>Draft (ej synlig)</option>
+          <option value="published" <%= val('status') === 'published' ? 'selected' : '' %>>Publicerad</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label for="grading_mode">Rättningsläge <span class="required">*</span>
+          <span class="hint">Självrätt = appen rättar direkt. Insamlad = svar sparas och du ser dem i admin.</span>
+        </label>
+        <select id="grading_mode" name="grading_mode">
+          <option value="auto"      <%= val('grading_mode') !== 'collected' ? 'selected' : '' %>>Självrätt — appen visar resultaten direkt</option>
+          <option value="collected" <%= val('grading_mode') === 'collected' ? 'selected' : '' %>>Insamlad — du ser svaren i admin</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="difficulty">Svårighetsgrad</label>
+        <select id="difficulty" name="difficulty">
+          <option value="easy"   <%= val('difficulty') === 'easy'   ? 'selected' : '' %>>Lätt</option>
+          <option value="medium" <%= val('difficulty') === 'medium' || !val('difficulty') ? 'selected' : '' %>>Medel</option>
+          <option value="hard"   <%= val('difficulty') === 'hard'   ? 'selected' : '' %>>Svår</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="estimated_minutes">Uppskattad tid (minuter)
+          <span class="hint">Valfritt — visas för användaren.</span>
+        </label>
+        <input type="number" id="estimated_minutes" name="estimated_minutes"
+               value="<%= val('estimated_minutes') %>" min="1" placeholder="t.ex. 45" />
+      </div>
+    </div>
+  </section>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary">
+      <%= isEdit ? 'Spara ändringar' : 'Skapa promenad' %>
+    </button>
+    <a href="/admin/trails" class="btn btn-ghost">Avbryt</a>
+    <% if (isEdit) { %>
+      <form method="POST" action="/admin/trails/<%= trail.id %>/delete"
+            style="display:inline;margin-left:auto">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn btn-danger"
+          onclick="return confirm('Radera promenaden permanent?')">Radera promenad</button>
+      </form>
+    <% } %>
+  </div>
+</form>
+
+<%- include('../../partials/footer') %>

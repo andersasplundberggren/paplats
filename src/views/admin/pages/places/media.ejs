@@ -1,0 +1,226 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Media — <%= place.title %></h1>
+  <div class="header-actions">
+    <a href="/admin/places/<%= place.id %>/edit" class="btn btn-ghost">← Redigera plats</a>
+    <a href="/admin/places" class="btn btn-ghost">Alla platser</a>
+    <a href="/admin/media/upload" class="btn btn-secondary">+ Ladda upp ny media</a>
+  </div>
+</div>
+
+<%- include('../../partials/flash') %>
+
+<!-- ═══════════════════════════════════════════════════════════
+     BIFOGADE MEDIAFILER
+════════════════════════════════════════════════════════════ -->
+<div class="card" style="margin-bottom:2rem">
+  <h2 class="card-title">Bifogade mediafiler (<%= attached.length %>)</h2>
+
+  <% if (attached.length === 0) { %>
+    <p style="color:var(--color-muted);padding:1.5rem 0">
+      Inga mediafiler är bifogade till denna plats ännu. Bifoga från listan nedan.
+    </p>
+  <% } else { %>
+    <div style="overflow-x:auto">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:60px">Förhandsgranskning</th>
+            <th>Fil</th>
+            <th>Typ</th>
+            <th>Användning</th>
+            <th>Ordning</th>
+            <th>Opacitet</th>
+            <th>Rotation</th>
+            <th style="width:120px">Åtgärder</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% attached.forEach(item => {
+            const url = mediaBaseUrl + '/' + item.stored_path;
+          %>
+          <tr>
+            <!-- Förhandsgranskning -->
+            <td>
+              <% if (item.type === 'image') { %>
+                <img src="<%= url %>" alt="<%= item.alt_text || item.original_filename %>"
+                     style="width:52px;height:40px;object-fit:cover;border-radius:4px;border:1px solid var(--color-border)" />
+              <% } else if (item.type === 'video') { %>
+                <div style="width:52px;height:40px;background:var(--color-bg-alt,#1e293b);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">🎬</div>
+              <% } else { %>
+                <div style="width:52px;height:40px;background:var(--color-bg-alt,#1e293b);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.4rem">🔊</div>
+              <% } %>
+            </td>
+
+            <!-- Filnamn -->
+            <td>
+              <span style="font-size:.85rem;word-break:break-all"><%= item.original_filename %></span>
+              <% if (item.alt_text) { %>
+                <br><span style="font-size:.75rem;color:var(--color-muted)"><%= item.alt_text %></span>
+              <% } %>
+            </td>
+
+            <!-- Typ-badge -->
+            <td>
+              <span class="badge badge-<%= item.type %>"><%= item.type %></span>
+            </td>
+
+            <!-- Uppdateringsformulär inline -->
+            <td colspan="4">
+              <form method="POST" action="/admin/places/<%= place.id %>/media/<%= item.pm_id %>/update"
+                    style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+                <select name="usage_type" style="font-size:.8rem;padding:.25rem .4rem">
+                  <% ['gallery','hero','ar_overlay'].forEach(t => { %>
+                    <option value="<%= t %>" <%= item.usage_type === t ? 'selected' : '' %>><%= t %></option>
+                  <% }) %>
+                </select>
+
+                <input type="number" name="display_order" value="<%= item.display_order %>"
+                       min="0" max="999" style="width:60px;font-size:.8rem;padding:.25rem .4rem"
+                       title="Sorteringsordning" />
+
+                <% if (item.type === 'image') { %>
+                  <input type="number" name="opacity_default"
+                         value="<%= item.opacity_default %>"
+                         min="0.05" max="1" step="0.05"
+                         style="width:65px;font-size:.8rem;padding:.25rem .4rem"
+                         title="Opacitet (0.05–1.0)" />
+
+                  <select name="display_rotation" style="font-size:.8rem;padding:.25rem .4rem" title="Rotation">
+                    <% [0, 90, 180, -90].forEach(deg => { %>
+                      <option value="<%= deg %>" <%= parseInt(item.display_rotation) === deg ? 'selected' : '' %>><%= deg %>°</option>
+                    <% }) %>
+                  </select>
+                <% } else { %>
+                  <input type="hidden" name="opacity_default"  value="<%= item.opacity_default %>" />
+                  <input type="hidden" name="display_rotation" value="<%= item.display_rotation %>" />
+                <% } %>
+
+                <button type="submit" class="btn btn-sm btn-secondary">Spara</button>
+              </form>
+            </td>
+
+            <!-- Ta bort-knapp -->
+            <td>
+              <form method="POST" action="/admin/places/<%= place.id %>/media/<%= item.pm_id %>/delete">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-sm btn-danger"
+                  onclick="return confirm('Ta bort \\'<%= item.original_filename %>\\' från platsen?')">
+                  Ta bort
+                </button>
+              </form>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════
+     BIFOGA BEFINTLIG MEDIAFIL
+════════════════════════════════════════════════════════════ -->
+<div class="card">
+  <h2 class="card-title">Bifoga mediafil till platsen</h2>
+
+  <% if (available.length === 0) { %>
+    <p style="color:var(--color-muted);padding:1rem 0">
+      Alla uppladdade mediafiler är redan bifogade.
+      <a href="/admin/media/upload">Ladda upp fler →</a>
+    </p>
+  <% } else { %>
+    <form method="POST" action="/admin/places/<%= place.id %>/media">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem">
+        <% available.forEach(item => {
+          const url = mediaBaseUrl + '/' + item.stored_path;
+        %>
+        <label style="cursor:pointer;border:2px solid var(--color-border,#334155);border-radius:10px;overflow:hidden;transition:border-color .15s"
+               onmouseover="this.style.borderColor='var(--color-primary,#3b82f6)'"
+               onmouseout="this.style.borderColor='var(--color-border,#334155)'">
+          <input type="radio" name="media_id" value="<%= item.id %>"
+                 style="position:absolute;opacity:0;pointer-events:none" required />
+
+          <!-- Förhandsgranskning -->
+          <div style="height:100px;background:var(--color-bg-alt,#0f172a);display:flex;align-items:center;justify-content:center;overflow:hidden">
+            <% if (item.type === 'image') { %>
+              <img src="<%= url %>" alt="<%= item.alt_text || item.original_filename %>"
+                   style="width:100%;height:100%;object-fit:cover" />
+            <% } else if (item.type === 'video') { %>
+              <span style="font-size:2.5rem">🎬</span>
+            <% } else { %>
+              <span style="font-size:2.5rem">🔊</span>
+            <% } %>
+          </div>
+
+          <!-- Info -->
+          <div style="padding:.5rem .65rem">
+            <div style="font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+                 title="<%= item.original_filename %>">
+              <%= item.original_filename %>
+            </div>
+            <div style="font-size:.72rem;color:var(--color-muted)">
+              <span class="badge badge-<%= item.type %>"><%= item.type %></span>
+              <% if (item.file_size) { %>
+                &nbsp;<%= (item.file_size / 1024 / 1024).toFixed(1) %> MB
+              <% } %>
+            </div>
+          </div>
+        </label>
+        <% }) %>
+      </div>
+
+      <!-- Bifogningsinställningar -->
+      <div class="form-row" style="margin-bottom:1rem">
+        <div class="form-group">
+          <label>Användning</label>
+          <select name="usage_type">
+            <option value="gallery">gallery — visas i galleriet</option>
+            <option value="hero">hero — omslagsbild</option>
+            <option value="ar_overlay">ar_overlay — visas i AR-läge</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Sorteringsordning</label>
+          <input type="number" name="display_order" value="0" min="0" max="999" />
+        </div>
+        <div class="form-group">
+          <label>Opacitet (0.05–1.0)</label>
+          <input type="number" name="opacity_default" value="1.0" min="0.05" max="1" step="0.05" />
+        </div>
+        <div class="form-group">
+          <label>Rotation</label>
+          <select name="display_rotation">
+            <option value="0">0° (ingen rotation)</option>
+            <option value="90">90° (höger)</option>
+            <option value="180">180° (upp och ned)</option>
+            <option value="-90">-90° (vänster)</option>
+          </select>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">Bifoga vald mediafil</button>
+    </form>
+  <% } %>
+</div>
+
+<!-- Markera vald mediafil visuellt -->
+<script>
+  document.querySelectorAll('input[name="media_id"]').forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      document.querySelectorAll('input[name="media_id"]').forEach(function(r) {
+        r.closest('label').style.borderColor = 'var(--color-border, #334155)';
+        r.closest('label').style.background  = '';
+      });
+      this.closest('label').style.borderColor = 'var(--color-primary, #3b82f6)';
+      this.closest('label').style.background  = 'rgba(59,130,246,.07)';
+    });
+  });
+</script>
+
+<%- include('../../partials/footer') %>

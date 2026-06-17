@@ -1,0 +1,410 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+<% const mediaAssets = locals.mediaAssets || []; %> 
+
+<div class="page-header">
+  <h1><%= trail.title %></h1>
+  <div class="header-actions">
+    <code style="background:var(--color-bg);padding:.3rem .75rem;border-radius:6px;font-weight:700;letter-spacing:.08em;border:1px solid var(--color-border)">
+      <%= trail.access_code %>
+    </code>
+    <span class="badge <%= trail.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+      <%= trail.status === 'published' ? 'Publicerad' : 'Utkast' %>
+    </span>
+    <a href="/admin/trails/<%= trail.id %>/edit" class="btn btn-ghost btn-sm">Inställningar</a>
+    <a href="/admin/trails/<%= trail.id %>/media" class="btn btn-ghost btn-sm">🖼️ Media</a>
+    <form method="POST" action="/admin/trails/<%= trail.id %>/publish" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn <%= trail.status === 'published' ? 'btn-ghost' : 'btn-primary' %> btn-sm">
+        <%= trail.status === 'published' ? 'Avpublicera' : 'Publicera' %>
+      </button>
+    </form>
+    <% if (trail.grading_mode === 'collected') { %>
+      <a href="/admin/trails/<%= trail.id %>/results" class="btn btn-secondary btn-sm">Se resultat</a>
+    <% } %>
+    <a href="/admin/trails" class="btn btn-ghost btn-sm">← Alla promenader</a>
+  </div>
+</div>
+
+<!-- Inline CSS för mediaväljaren -->
+<style>
+  .media-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: .6rem;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: .5rem;
+    background: var(--color-bg, #f8fafc);
+    border: 1px solid var(--color-border, #e2e8f0);
+    border-radius: 8px;
+    margin-top: .5rem;
+  }
+  .media-picker-item {
+    cursor: pointer;
+    border: 2px solid var(--color-border, #e2e8f0);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: border-color .15s, box-shadow .15s;
+    background: #fff;
+  }
+  .media-picker-item:hover { border-color: var(--color-primary, #3b82f6); }
+  .media-picker-item.selected {
+    border-color: var(--color-primary, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59,130,246,.2);
+  }
+  .media-picker-thumb {
+    height: 70px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f1f5f9;
+    font-size: 1.8rem;
+  }
+  .media-picker-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .media-picker-name {
+    padding: .25rem .35rem;
+    font-size: .68rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--color-text, #1e293b);
+  }
+  .media-selected-preview {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .4rem .6rem;
+    background: rgba(59,130,246,.07);
+    border: 1px solid rgba(59,130,246,.25);
+    border-radius: 6px;
+    font-size: .8rem;
+    margin-top: .4rem;
+  }
+  .media-selected-preview img {
+    width: 36px; height: 28px; object-fit: cover; border-radius: 3px;
+  }
+  .picker-toggle-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .8rem;
+    padding: .3rem .7rem;
+    border-radius: 6px;
+    border: 1px solid var(--color-border, #e2e8f0);
+    background: #fff;
+    cursor: pointer;
+    color: var(--color-text, #1e293b);
+    transition: background .12s;
+  }
+  .picker-toggle-btn:hover { background: #f1f5f9; }
+  .picker-toggle-btn.has-media {
+    border-color: rgba(59,130,246,.4);
+    background: rgba(59,130,246,.06);
+    color: var(--color-primary, #3b82f6);
+  }
+</style>
+
+<div class="content-columns" style="grid-template-columns:1fr 360px;gap:2rem">
+
+  <div>
+    <% if (stops.length === 0) { %>
+      <div class="card">
+        <p class="text-muted">Inga stopp tillagda ännu. Lägg till platser från panelen till höger.</p>
+      </div>
+    <% } else { %>
+      <% stops.forEach((stop, index) => { %>
+      <div class="card" style="margin-bottom:1rem">
+
+        <!-- Stopp-header -->
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--color-border)">
+          <div style="background:var(--color-primary);color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">
+            <%= stop.stop_order + 1 %>
+          </div>
+          <div>
+            <strong><%= stop.place_title %></strong>
+            <div style="font-size:.78rem;color:var(--color-muted)">
+              <%= parseFloat(stop.latitude).toFixed(5) %>, <%= parseFloat(stop.longitude).toFixed(5) %>
+              · Radius: <%= stop.activation_radius_meters %> m
+            </div>
+          </div>
+          <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/delete" style="margin-left:auto">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn btn-xs btn-danger"
+              onclick="return confirm('Ta bort detta stopp?')">Ta bort</button>
+          </form>
+        </div>
+
+        <!-- Ordning + introtext -->
+        <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/order" style="margin-bottom:1rem">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <div class="form-row">
+            <div class="form-group" style="flex:0 0 80px">
+              <label style="font-size:.75rem">Ordning</label>
+              <input type="number" name="stop_order" value="<%= stop.stop_order %>"
+                     style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px" />
+            </div>
+            <div class="form-group" style="flex:1">
+              <label style="font-size:.75rem">Introtext <span style="font-weight:400;color:var(--color-muted)">— visas när stoppet låses upp</span></label>
+              <textarea name="intro_text" rows="2"
+                style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"><%= stop.intro_text || '' %></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-xs btn-secondary">Spara stopp</button>
+        </form>
+
+        <!-- Fråga -->
+        <div style="background:var(--color-bg);border-radius:8px;padding:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <strong style="font-size:.9rem">Fråga</strong>
+            <% if (stop.question_id) { %>
+              <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/question/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-danger"
+                  onclick="return confirm('Ta bort frågan?')">Ta bort fråga</button>
+              </form>
+            <% } %>
+          </div>
+
+          <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/question">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+            <div class="form-group">
+              <label style="font-size:.78rem">Frågetext <span class="required">*</span></label>
+              <textarea name="question_text" rows="2" required
+                style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"><%= stop.question_text || '' %></textarea>
+            </div>
+
+            <!-- ═══ VISUELL MEDIAVÄLJARE ════════════════════════════ -->
+            <%
+              const pickerId   = 'mediapicker_' + stop.id;
+              const previewId  = 'mediapreview_' + stop.id;
+              const inputId    = 'mediainput_'   + stop.id;
+              const hasMedia   = !!stop.question_media_id;
+            %>
+            <div style="margin-bottom:.75rem">
+              <label style="font-size:.78rem;display:block;margin-bottom:.4rem">
+                Media till frågan
+                <span style="font-weight:400;color:var(--color-muted)"> — bild, video eller ljud som visas med frågan (valfritt)</span>
+              </label>
+
+              <!-- Dold input som håller valt media-ID -->
+              <input type="hidden" name="media_asset_id" id="<%= inputId %>"
+                     value="<%= stop.question_media_id || '' %>" />
+
+              <!-- Förhandsgranskning av nuvarande val -->
+              <div id="<%= previewId %>">
+                <% if (hasMedia) { %>
+                  <div class="media-selected-preview">
+                    <% if (stop.question_media_type === 'image' && stop.question_media_path) { %>
+                      <img src="<%= mediaBaseUrl %>/<%= stop.question_media_path %>" alt="" />
+                    <% } else if (stop.question_media_type === 'video') { %>
+                      <span>🎬</span>
+                    <% } else { %>
+                      <span>🔊</span>
+                    <% } %>
+                    <span><%= stop.question_media_filename || ('ID ' + stop.question_media_id) %></span>
+                    <button type="button" onclick="clearMediaPicker('<%= stop.id %>')"
+                      style="margin-left:auto;background:none;border:none;cursor:pointer;color:#ef4444;font-size:.8rem">
+                      ✕ Ta bort
+                    </button>
+                  </div>
+                <% } %>
+              </div>
+
+              <!-- Knapp som visar/döljer rutnätet -->
+              <button type="button"
+                id="<%= pickerId %>_btn"
+                class="picker-toggle-btn <%= hasMedia ? 'has-media' : '' %>"
+                style="margin-top:.4rem"
+                onclick="togglePicker('<%= stop.id %>')">
+                🖼️ <%= hasMedia ? 'Byt media' : 'Välj media' %>
+              </button>
+
+              <!-- Mediarutnät (dolt som standard) -->
+              <div id="<%= pickerId %>" style="display:none;margin-top:.5rem">
+                <% if (mediaAssets.length === 0) { %>
+                  <p style="font-size:.8rem;color:var(--color-muted);padding:.5rem">
+                    Inga mediafiler uppladdade.
+                    <a href="/admin/media/upload" target="_blank">Ladda upp →</a>
+                  </p>
+                <% } else { %>
+                  <div class="media-picker-grid" id="<%= pickerId %>_grid">
+                    <% mediaAssets.forEach(asset => {
+                      const assetUrl = mediaBaseUrl + '/' + asset.stored_path;
+                      const isSelected = stop.question_media_id == asset.id;
+                    %>
+                    <div class="media-picker-item <%= isSelected ? 'selected' : '' %>"
+                         data-id="<%= asset.id %>"
+                         data-type="<%= asset.type %>"
+                         data-url="<%= assetUrl %>"
+                         data-name="<%= asset.original_filename %>"
+                         data-stop="<%= stop.id %>"
+                         onclick="selectMedia(this)">
+                      <div class="media-picker-thumb">
+                        <% if (asset.type === 'image') { %>
+                          <img src="<%= assetUrl %>" alt="<%= asset.alt_text || asset.original_filename %>" loading="lazy" />
+                        <% } else if (asset.type === 'video') { %>
+                          🎬
+                        <% } else { %>
+                          🔊
+                        <% } %>
+                      </div>
+                      <div class="media-picker-name" title="<%= asset.original_filename %>">
+                        <%= asset.original_filename %>
+                      </div>
+                    </div>
+                    <% }) %>
+                  </div>
+                  <div style="display:flex;justify-content:flex-end;margin-top:.4rem">
+                    <button type="button" onclick="togglePicker('<%= stop.id %>')"
+                      style="font-size:.78rem;padding:.25rem .6rem;border:1px solid var(--color-border);border-radius:5px;background:#fff;cursor:pointer">
+                      Stäng
+                    </button>
+                  </div>
+                <% } %>
+              </div>
+            </div>
+            <!-- ═══ SLUT MEDIAVÄLJARE ═══════════════════════════════ -->
+
+            <!-- Svarsalternativ -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+              <% ['a','b','c','d'].forEach(opt => { %>
+              <div>
+                <label style="font-size:.72rem;display:flex;align-items:center;gap:.3rem">
+                  <input type="radio" name="correct_option" value="<%= opt %>"
+                    <%= stop.correct_option === opt ? 'checked' : '' %> required />
+                  Alternativ <%= opt.toUpperCase() %>
+                  <span style="color:var(--color-muted)">(markera rätt)</span>
+                </label>
+                <input type="text" name="option_<%= opt %>"
+                  value="<%= stop['option_' + opt] || '' %>"
+                  <%= opt === 'a' || opt === 'b' ? 'required' : '' %>
+                  placeholder="<%= opt === 'c' || opt === 'd' ? 'Valfritt' : '' %>"
+                  style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+              </div>
+              <% }) %>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 80px;gap:.5rem;margin-bottom:.5rem">
+              <div class="form-group">
+                <label style="font-size:.72rem">Förklaring av rätt svar (valfritt)</label>
+                <input type="text" name="explanation" value="<%= stop.explanation || '' %>"
+                  style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+              </div>
+              <div class="form-group">
+                <label style="font-size:.72rem">Poäng</label>
+                <input type="number" name="points" value="<%= stop.points || 10 %>" min="1"
+                  style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-xs btn-primary">
+              <%= stop.question_id ? 'Uppdatera fråga' : 'Lägg till fråga' %>
+            </button>
+          </form>
+        </div>
+      </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <!-- Lägg till stopp -->
+  <div>
+    <div class="card" style="position:sticky;top:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1rem">Lägg till stopp</h3>
+      <form method="POST" action="/admin/trails/<%= trail.id %>/stops">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <div class="form-group">
+          <label style="font-size:.82rem">Välj plats <span class="required">*</span></label>
+          <select name="place_id" required style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px">
+            <option value="">— Välj plats —</option>
+            <% places.forEach(p => { %>
+              <option value="<%= p.id %>"><%= p.title %></option>
+            <% }) %>
+          </select>
+        </div>
+        <div class="form-group">
+          <label style="font-size:.82rem">Ordning <span class="hint">(0 = första stoppet)</span></label>
+          <input type="number" name="stop_order" value="<%= stops.length %>"
+            style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px" />
+        </div>
+        <button type="submit" class="btn btn-primary" style="width:100%">+ Lägg till stopp</button>
+      </form>
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--color-border)">
+        <p style="font-size:.78rem;color:var(--color-muted)">
+          <a href="/admin/trails/<%= trail.id %>/media" class="btn btn-ghost btn-sm" style="width:100%;text-align:center">
+            🖼️ Hantera promenadmedia
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Visa/dölj mediaväljaren för ett stopp
+function togglePicker(stopId) {
+  var grid = document.getElementById('mediapicker_' + stopId);
+  if (!grid) return;
+  grid.style.display = grid.style.display === 'none' ? 'block' : 'none';
+}
+
+// Välj en mediafil — uppdatera hidden input + förhandsgranskning
+function selectMedia(el) {
+  var stopId   = el.dataset.stop;
+  var mediaId  = el.dataset.id;
+  var mediaType = el.dataset.type;
+  var mediaUrl = el.dataset.url;
+  var mediaName = el.dataset.name;
+
+  // Uppdatera hidden input
+  document.getElementById('mediainput_' + stopId).value = mediaId;
+
+  // Avmarkera alla i detta rutnät
+  var grid = document.getElementById('mediapicker_' + stopId + '_grid');
+  if (grid) {
+    grid.querySelectorAll('.media-picker-item').forEach(function(item) {
+      item.classList.remove('selected');
+    });
+  }
+  el.classList.add('selected');
+
+  // Uppdatera förhandsgranskning
+  var preview = document.getElementById('mediapreview_' + stopId);
+  var thumb = '';
+  if (mediaType === 'image') {
+    thumb = '<img src="' + mediaUrl + '" alt="" />';
+  } else if (mediaType === 'video') {
+    thumb = '<span>🎬</span>';
+  } else {
+    thumb = '<span>🔊</span>';
+  }
+  preview.innerHTML = '<div class="media-selected-preview">'
+    + thumb
+    + '<span>' + mediaName + '</span>'
+    + '<button type="button" onclick="clearMediaPicker(\'' + stopId + '\')" '
+    + 'style="margin-left:auto;background:none;border:none;cursor:pointer;color:#ef4444;font-size:.8rem">'
+    + '✕ Ta bort</button></div>';
+
+  // Uppdatera toggle-knapp
+  var btn = document.getElementById('mediapicker_' + stopId + '_btn');
+  if (btn) { btn.textContent = '🖼️ Byt media'; btn.classList.add('has-media'); }
+
+  // Stäng rutnätet
+  togglePicker(stopId);
+}
+
+// Rensa valt media
+function clearMediaPicker(stopId) {
+  document.getElementById('mediainput_' + stopId).value = '';
+  document.getElementById('mediapreview_' + stopId).innerHTML = '';
+  var btn = document.getElementById('mediapicker_' + stopId + '_btn');
+  if (btn) { btn.textContent = '🖼️ Välj media'; btn.classList.remove('has-media'); }
+  // Avmarkera alla
+  var grid = document.getElementById('mediapicker_' + stopId + '_grid');
+  if (grid) grid.querySelectorAll('.media-picker-item').forEach(function(i){ i.classList.remove('selected'); });
+}
+</script>
+
+<%- include('../../partials/footer') %>

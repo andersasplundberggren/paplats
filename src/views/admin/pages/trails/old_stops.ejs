@@ -1,0 +1,178 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= trail.title %></h1>
+  <div class="header-actions">
+    <code style="background:var(--color-bg);padding:.3rem .75rem;border-radius:6px;font-weight:700;letter-spacing:.08em;border:1px solid var(--color-border)">
+      <%= trail.access_code %>
+    </code>
+    <span class="badge <%= trail.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+      <%= trail.status === 'published' ? 'Publicerad' : 'Utkast' %>
+    </span>
+    <a href="/admin/trails/<%= trail.id %>/edit" class="btn btn-ghost btn-sm">Inställningar</a>
+    <form method="POST" action="/admin/trails/<%= trail.id %>/publish" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn <%= trail.status === 'published' ? 'btn-ghost' : 'btn-primary' %> btn-sm">
+        <%= trail.status === 'published' ? 'Avpublicera' : 'Publicera' %>
+      </button>
+    </form>
+    <% if (trail.grading_mode === 'collected') { %>
+      <a href="/admin/trails/<%= trail.id %>/results" class="btn btn-secondary btn-sm">Se resultat</a>
+    <% } %>
+    <a href="/admin/trails" class="btn btn-ghost btn-sm">← Alla promenader</a>
+  </div>
+</div>
+
+<div class="content-columns" style="grid-template-columns:1fr 360px;gap:2rem">
+
+  <!-- Stopp-lista -->
+  <div>
+    <% if (stops.length === 0) { %>
+      <div class="card">
+        <p class="text-muted">Inga stopp tillagda ännu. Lägg till platser från listan till höger.</p>
+      </div>
+    <% } else { %>
+      <% stops.forEach((stop, index) => { %>
+      <div class="card" style="margin-bottom:1rem">
+        <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:1rem;padding-bottom:.75rem;border-bottom:1px solid var(--color-border)">
+          <div style="background:var(--color-primary);color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0">
+            <%= stop.stop_order + 1 %>
+          </div>
+          <div>
+            <strong><%= stop.place_title %></strong>
+            <div style="font-size:.78rem;color:var(--color-muted)">
+              <%= parseFloat(stop.latitude).toFixed(5) %>, <%= parseFloat(stop.longitude).toFixed(5) %>
+              · Radius: <%= stop.activation_radius_meters %> m
+            </div>
+          </div>
+          <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/delete" style="margin-left:auto">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+            <button type="submit" class="btn btn-xs btn-danger"
+              onclick="return confirm('Ta bort detta stopp?')">Ta bort</button>
+          </form>
+        </div>
+
+        <!-- Intro-text och ordning -->
+        <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/order"
+              style="margin-bottom:1rem">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <div class="form-row">
+            <div class="form-group" style="flex:0 0 80px">
+              <label style="font-size:.75rem">Ordning</label>
+              <input type="number" name="stop_order" value="<%= stop.stop_order %>"
+                     style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px" />
+            </div>
+            <div class="form-group" style="flex:1">
+              <label style="font-size:.75rem">Introtext
+                <span style="font-weight:400;color:var(--color-muted)"> — visas när stoppet låses upp</span>
+              </label>
+              <textarea name="intro_text" rows="2"
+                style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"><%= stop.intro_text || '' %></textarea>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-xs btn-secondary">Spara stopp</button>
+        </form>
+
+        <!-- Fråga -->
+        <div style="background:var(--color-bg);border-radius:8px;padding:1rem">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+            <strong style="font-size:.9rem">Fråga</strong>
+            <% if (stop.question_id) { %>
+              <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/question/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-danger"
+                  onclick="return confirm('Ta bort frågan?')">Ta bort fråga</button>
+              </form>
+            <% } %>
+          </div>
+
+          <form method="POST" action="/admin/trails/<%= trail.id %>/stops/<%= stop.id %>/question">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+            <div class="form-group">
+              <label style="font-size:.78rem">Frågetext <span class="required">*</span></label>
+              <textarea name="question_text" rows="2" required
+                style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"><%= stop.question_text || '' %></textarea>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+              <% ['a','b','c','d'].forEach(opt => { %>
+              <div>
+                <label style="font-size:.72rem;display:flex;align-items:center;gap:.3rem">
+                  <input type="radio" name="correct_option" value="<%= opt %>"
+                    <%= stop.correct_option === opt ? 'checked' : '' %> required />
+                  Alternativ <%= opt.toUpperCase() %>
+                  <span style="color:var(--color-muted)">(markera rätt)</span>
+                </label>
+                <input type="text" name="option_<%= opt %>"
+                  value="<%= stop['option_' + opt] || '' %>"
+                  <%= opt === 'a' || opt === 'b' ? 'required' : '' %>
+                  placeholder="<%= opt === 'c' || opt === 'd' ? 'Valfritt' : '' %>"
+                  style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+              </div>
+              <% }) %>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 80px;gap:.5rem;margin-bottom:.5rem">
+              <div class="form-group">
+                <label style="font-size:.72rem">Förklaring av rätt svar (valfritt)</label>
+                <input type="text" name="explanation" value="<%= stop.explanation || '' %>"
+                  style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+              </div>
+              <div class="form-group">
+                <label style="font-size:.72rem">Poäng</label>
+                <input type="number" name="points" value="<%= stop.points || 10 %>" min="1"
+                  style="width:100%;padding:.35rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-xs btn-primary">
+              <%= stop.question_id ? 'Uppdatera fråga' : 'Lägg till fråga' %>
+            </button>
+          </form>
+        </div>
+      </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <!-- Lägg till stopp -->
+  <div>
+    <div class="card" style="position:sticky;top:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1rem">Lägg till stopp</h3>
+      <form method="POST" action="/admin/trails/<%= trail.id %>/stops">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+        <div class="form-group">
+          <label style="font-size:.82rem">Välj plats <span class="required">*</span>
+            <span class="hint">Bara publicerade platser visas.</span>
+          </label>
+          <select name="place_id" required style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px">
+            <option value="">— Välj plats —</option>
+            <% places.forEach(p => { %>
+              <option value="<%= p.id %>"><%= p.title %></option>
+            <% }) %>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label style="font-size:.82rem">Ordning <span class="hint">(0 = första stoppet)</span></label>
+          <input type="number" name="stop_order" value="<%= stops.length %>"
+            style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%">+ Lägg till stopp</button>
+      </form>
+
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--color-border)">
+        <p style="font-size:.78rem;color:var(--color-muted)">
+          <strong>Tips:</strong> Ordningen avgör i vilken ordning stoppen visas i appen.
+          Sätt ordning 0, 1, 2... för att kontrollera sekvensen.
+        </p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<%- include('../../partials/footer') %>

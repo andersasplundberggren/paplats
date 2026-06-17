@@ -1,0 +1,347 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<style>
+  .sortable-ghost { opacity: .4; background: #e0f2fe; }
+  .drag-handle:active { cursor: grabbing; }
+</style>
+<!-- QR-modal -->
+<div id="qr-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:999;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:16px;padding:2rem;width:360px;max-width:90vw;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <h3 style="margin:0 0 .25rem;font-size:1.1rem">QR-kod &amp; direktlänk</h3>
+    <p style="font-size:.82rem;color:#64748b;margin:0 0 1.25rem">
+      Skannar du QR-koden med kameran kommer du direkt till uppdraget i webbläsaren.
+    </p>
+    <div id="qr-canvas-wrap" style="display:flex;justify-content:center;margin-bottom:1rem">
+      <canvas id="qr-canvas" width="200" height="200"></canvas>
+    </div>
+    <div style="font-size:.85rem;font-weight:700;letter-spacing:.1em;color:#0f172a;margin-bottom:.75rem">
+      <%= assignment.access_code %>
+    </div>
+
+    <!-- Direktlänk -->
+    <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:1.25rem;padding:.5rem .65rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;text-align:left">
+      <span id="qr-direct-url" style="flex:1;font-size:.7rem;color:#475569;word-break:break-all;line-height:1.4"></span>
+      <button onclick="copyDirectLink()" style="flex-shrink:0;padding:.25rem .5rem;border-radius:5px;border:1px solid #e2e8f0;background:#fff;font-size:.72rem;cursor:pointer;white-space:nowrap">Kopiera</button>
+    </div>
+
+    <div style="display:flex;gap:.6rem;justify-content:center;flex-wrap:wrap">
+      <button onclick="downloadQR()" class="btn btn-primary btn-sm">
+        ⬇ Ladda ned PNG
+      </button>
+      <button onclick="printQR()" class="btn btn-ghost btn-sm">
+        🖨 Skriv ut
+      </button>
+      <button onclick="closeQR()" class="btn btn-ghost btn-sm">
+        Stäng
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="page-header">
+  <h1><%= assignment.title %></h1>
+  <div class="header-actions">
+    <code style="padding:.3rem .75rem;background:var(--color-bg);border:1px solid var(--color-border);border-radius:6px;font-weight:700;letter-spacing:.08em">
+      <%= assignment.access_code %>
+    </code>
+    <span class="badge <%= assignment.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+      <%= assignment.status === 'published' ? 'Publicerad' : 'Utkast' %>
+    </span>
+    <button onclick="openQR('<%= assignment.access_code %>')" class="btn btn-ghost btn-sm">
+      📱 QR-kod
+    </button>
+    <a href="/app/?code=<%= assignment.access_code %>" target="_blank" rel="noopener" class="btn btn-ghost btn-sm">
+      👁 Förhandsgranska
+    </a>
+    <a href="/admin/assignments/<%= assignment.id %>/live" class="btn btn-ghost btn-sm">
+      📡 Live
+    </a>
+    <a href="/admin/assignments/<%= assignment.id %>/edit" class="btn btn-ghost btn-sm">Redigera uppdrag</a>
+    <form method="POST" action="/admin/assignments/<%= assignment.id %>/publish" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn <%= assignment.status === 'published' ? 'btn-ghost' : 'btn-primary' %> btn-sm">
+        <%= assignment.status === 'published' ? 'Avpublicera' : 'Publicera' %>
+      </button>
+    </form>
+    <a href="/admin/assignments" class="btn btn-ghost btn-sm">← Alla uppdrag</a>
+  </div>
+</div>
+
+<div class="content-columns" style="grid-template-columns:1fr 340px;gap:2rem;align-items:start">
+
+  <!-- Platslista -->
+  <div>
+    <% if (places.length === 0) { %>
+      <div class="card" style="text-align:center;padding:2.5rem">
+        <p style="color:var(--color-muted);margin-bottom:1rem">Inga platser tillagda ännu.</p>
+        <p style="font-size:.82rem;color:var(--color-muted)">Använd formuläret till höger för att lägga till den första platsen.</p>
+      </div>
+    <% } else { %>
+      <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.75rem;flex-wrap:wrap">
+        <% if (places.length > 1) { %>
+        <p style="font-size:.75rem;color:var(--color-muted);margin:0">
+          Dra i ⠿ för att ändra ordningen. Sparas automatiskt.
+        </p>
+        <% } %>
+        <% if (places.length > 4) { %>
+        <input type="text" id="places-search"
+               placeholder="Sök plats…"
+               oninput="filterPlaces(this.value)"
+               style="margin-left:auto;padding:.35rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem;width:200px" />
+        <% } %>
+      </div>
+      <div id="places-no-results" style="display:none;text-align:center;padding:2rem;color:var(--color-muted);font-size:.88rem">
+        Ingen plats matchar sökningen.
+      </div>
+      <div id="places-sortable">
+      <% places.forEach(place => { %>
+      <div class="card place-sort-item" data-id="<%= place.id %>"
+           data-name="<%= (place.title || '').toLowerCase() %>"
+           style="margin-bottom:1rem;padding:1.25rem">
+        <div style="display:flex;align-items:flex-start;gap:1rem">
+          <% if (places.length > 1) { %>
+          <div class="drag-handle" title="Dra för att ändra ordning"
+               style="flex-shrink:0;cursor:grab;color:var(--color-muted);font-size:1.2rem;padding:.1rem .2rem;margin-top:.1rem;line-height:1;user-select:none">⠿</div>
+          <% } %>
+          <div style="background:var(--color-primary);color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-size:.9rem" class="place-order-badge">
+            <%= place.stop_order + 1 %>
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.25rem">
+              <strong><%= place.title %></strong>
+              <span class="badge <%= place.status === 'published' ? 'badge-green' : 'badge-gray' %>" style="font-size:.68rem">
+                <%= place.status === 'published' ? 'Pub.' : 'Utkast' %>
+              </span>
+              <span style="font-size:.75rem;color:var(--color-muted)">
+                <%= place.block_count %> innehållsblock
+              </span>
+            </div>
+            <div style="font-size:.78rem;color:var(--color-muted)">
+              <%= parseFloat(place.latitude).toFixed(5) %>, <%= parseFloat(place.longitude).toFixed(5) %>
+              &nbsp;·&nbsp; Radie: <%= place.activation_radius_meters %> m
+            </div>
+            <% if (place.short_description) { %>
+              <p style="font-size:.82rem;margin:.4rem 0 0;color:var(--color-text)"><%= place.short_description %></p>
+            <% } %>
+          </div>
+          <div style="display:flex;gap:.4rem;flex-shrink:0">
+            <a href="/admin/content/<%= place.id %>" class="btn btn-primary btn-sm">Innehåll</a>
+            <a href="/admin/places/<%= place.id %>/edit" class="btn btn-ghost btn-sm">Redigera</a>
+          </div>
+        </div>
+      </div>
+      <% }) %>
+      </div>
+      <div id="reorder-status" style="font-size:.75rem;color:var(--color-muted);margin-top:.5rem;min-height:1.2em"></div>
+    <% } %>
+  </div>
+
+  <!-- Höger kolumn -->
+  <div style="position:sticky;top:1rem">
+    <div class="card">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1.25rem">Lägg till plats</h3>
+      <a href="/admin/places/new?assignmentId=<%= assignment.id %>"
+         class="btn btn-primary" style="width:100%;text-align:center;display:block">
+        + Ny plats med karta
+      </a>
+      <p style="font-size:.75rem;color:var(--color-muted);margin-top:.75rem;text-align:center">
+        Öppnar formuläret med inbyggd kartväljare
+      </p>
+    </div>
+
+    <% const draftCount = places.filter(p => p.status !== 'published').length; %>
+    <% if (draftCount > 0) { %>
+    <div class="card" style="margin-top:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:.5rem">Publicera platser</h3>
+      <p style="font-size:.78rem;color:var(--color-muted);margin-bottom:1rem">
+        <%= draftCount %> plats<%= draftCount === 1 ? '' : 'er' %> är fortfarande utkast och syns inte för användarna.
+      </p>
+      <form method="POST" action="/admin/assignments/<%= assignment.id %>/places/publish-all">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn btn-secondary" style="width:100%"
+          onclick="return confirm('Publicera alla <%= draftCount %> utkast-platser?')">
+          Publicera alla utkast
+        </button>
+      </form>
+    </div>
+    <% } %>
+
+    <!-- QR-kort -->
+    <div class="card" style="margin-top:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:.75rem">QR-kod</h3>
+      <p style="font-size:.78rem;color:var(--color-muted);margin-bottom:1rem">
+        Generera en QR-kod som användare kan skanna för att starta uppdraget direkt i SpotOn-appen.
+      </p>
+      <button onclick="openQR('<%= assignment.access_code %>')"
+              class="btn btn-secondary" style="width:100%;text-align:center">
+        📱 Visa QR-kod
+      </button>
+    </div>
+
+    <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+    <div class="card" style="margin-top:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1rem">Redaktörer</h3>
+      <a href="/admin/editors/<%= assignment.id %>"
+         class="btn btn-ghost" style="width:100%;text-align:center;display:block">
+        Tilldela redaktörer →
+      </a>
+    </div>
+    <% } %>
+  </div>
+
+</div>
+
+<!-- QR-bibliotek (litet, ingen extern server behövs) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+
+<script>
+function filterPlaces(q) {
+  var term  = (q || '').toLowerCase().trim();
+  var items = document.querySelectorAll('.place-sort-item');
+  var shown = 0;
+  items.forEach(function(item) {
+    var match = !term || (item.dataset.name || '').includes(term);
+    item.style.display = match ? '' : 'none';
+    if (match) shown++;
+  });
+  var noRes = document.getElementById('places-no-results');
+  if (noRes) noRes.style.display = shown === 0 ? 'block' : 'none';
+}
+
+var currentCode = '';
+var currentDirectUrl = '';
+
+// ─── Drag-and-drop för platsordning ──────────────────────────
+var sortableEl = document.getElementById('places-sortable');
+if (sortableEl) {
+  Sortable.create(sortableEl, {
+    handle: '.drag-handle',
+    animation: 150,
+    ghostClass: 'sortable-ghost',
+    onEnd: function() {
+      var items = Array.from(sortableEl.querySelectorAll('.place-sort-item'));
+      var data  = items.map(function(el, index) {
+        return { id: el.dataset.id, stop_order: index };
+      });
+
+      // Uppdatera sifferbadgarna direkt i UI
+      items.forEach(function(el, index) {
+        var badge = el.querySelector('.place-order-badge');
+        if (badge) badge.textContent = index + 1;
+      });
+
+      var statusEl = document.getElementById('reorder-status');
+      if (statusEl) statusEl.textContent = 'Sparar…';
+
+      fetch('/admin/assignments/<%= assignment.id %>/places/reorder', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': '<%= csrfToken %>' },
+        body:    JSON.stringify({ items: data })
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(r) {
+        if (statusEl) {
+          statusEl.textContent = r.ok ? 'Ordningen sparad.' : 'Kunde inte spara ordningen.';
+          setTimeout(function() { statusEl.textContent = ''; }, 2500);
+        }
+      })
+      .catch(function() {
+        if (statusEl) {
+          statusEl.textContent = 'Nätverksfel — försök igen.';
+          setTimeout(function() { statusEl.textContent = ''; }, 3000);
+        }
+      });
+    }
+  });
+}
+
+
+
+function openQR(code) {
+  currentCode = code;
+
+  // Bygg direktlänk med full URL
+  var baseUrl = window.location.protocol + '//' + window.location.host;
+  currentDirectUrl = baseUrl + '/app/?code=' + encodeURIComponent(code);
+
+  var modal = document.getElementById('qr-modal');
+  modal.style.display = 'flex';
+
+  // Visa direktlänk i modal
+  var urlEl = document.getElementById('qr-direct-url');
+  if (urlEl) urlEl.textContent = currentDirectUrl;
+
+  // Rensa och rita QR-kod med full URL
+  var canvas = document.getElementById('qr-canvas');
+  var ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, 200, 200);
+
+  var tmp = document.createElement('div');
+  document.body.appendChild(tmp);
+  new QRCode(tmp, {
+    text:          currentDirectUrl,
+    width:         200,
+    height:        200,
+    colorDark:     '#0f172a',
+    colorLight:    '#ffffff',
+    correctLevel:  QRCode.CorrectLevel.H
+  });
+
+  setTimeout(function() {
+    var generated = tmp.querySelector('canvas');
+    if (generated) {
+      ctx.drawImage(generated, 0, 0);
+    }
+    document.body.removeChild(tmp);
+  }, 100);
+}
+
+function copyDirectLink() {
+  if (!currentDirectUrl) return;
+  navigator.clipboard.writeText(currentDirectUrl).then(function() {
+    var btn = event.target;
+    var orig = btn.textContent;
+    btn.textContent = '✓ Kopierad!';
+    setTimeout(function() { btn.textContent = orig; }, 2000);
+  }).catch(function() {
+    prompt('Kopiera direktlänken:', currentDirectUrl);
+  });
+}
+
+function closeQR() {
+  document.getElementById('qr-modal').style.display = 'none';
+}
+
+function downloadQR() {
+  var canvas = document.getElementById('qr-canvas');
+  var link   = document.createElement('a');
+  link.download = 'spoton-qr-' + currentCode + '.png';
+  link.href      = canvas.toDataURL('image/png');
+  link.click();
+}
+
+function printQR() {
+  var canvas   = document.getElementById('qr-canvas');
+  var dataUrl  = canvas.toDataURL('image/png');
+  var win      = window.open('', '_blank');
+  win.document.write(
+    '<html><head><title>QR-kod ' + currentCode + '</title>' +
+    '<style>body{display:flex;flex-direction:column;align-items:center;' +
+    'justify-content:center;height:100vh;font-family:sans-serif;gap:1rem}' +
+    'h2{margin:0}p{color:#64748b;margin:0}</style></head><body>' +
+    '<h2>SpotOn — ' + currentCode + '</h2>' +
+    '<img src="' + dataUrl + '" width="250" height="250" />' +
+    '<p>Skanna med SpotOn-appen för att starta uppdraget</p>' +
+    '<script>window.onload=function(){window.print()}<\/script>' +
+    '</body></html>'
+  );
+}
+
+// Stäng modal vid klick utanför
+document.getElementById('qr-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeQR();
+});
+</script>
+
+<%- include('../../partials/footer') %>

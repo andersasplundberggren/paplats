@@ -1,0 +1,121 @@
+<%- include('../../partials/header', { title, csrfToken, superAdminName }) %>
+
+<div class="page-header">
+  <h1>Administratörer</h1>
+</div>
+
+<div class="content-columns">
+  <div class="card">
+    <h2 class="card-title">Alla admins</h2>
+    <table class="data-table">
+      <thead>
+        <tr><th>Namn</th><th>E-post</th><th>Roll</th><th>Klient</th><th>Skapad</th><th>Åtgärder</th></tr>
+      </thead>
+      <tbody>
+        <% admins.forEach(a => { %>
+        <tr>
+          <td><strong><%= a.name %></strong></td>
+          <td><%= a.email %></td>
+          <td><span class="badge <%= a.role === 'superadmin' ? 'badge-purple' : 'badge-blue' %>"><%= a.role %></span></td>
+          <td><%= a.tenant_name || '—' %></td>
+          <td><%= new Date(a.created_at).toLocaleDateString('sv-SE') %></td>
+          <td class="action-cell">
+            <% if (a.role === 'admin') { %>
+              <form method="POST" action="/superadmin/impersonate/<%= a.id %>" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-secondary">Logga in som</button>
+              </form>
+              <button class="btn btn-xs btn-ghost"
+                data-id="<%= a.id %>"
+                onclick="showResetPw(<%= a.id %>, '<%= a.name %>')">Nytt lösenord</button>
+              <form method="POST" action="/superadmin/admins/<%= a.id %>/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-danger"
+                  onclick="return confirm('Radera <%= a.name %>?')">Radera</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Ny administratör</h2>
+    <form method="POST" action="/superadmin/admins">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Namn <span class="required">*</span></label>
+        <input type="text" name="name" required maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label>E-post <span class="required">*</span></label>
+        <input type="email" name="email" required />
+      </div>
+      <div class="form-group">
+        <label>Lösenord <span class="required">*</span> <span class="hint">minst 10 tecken</span></label>
+        <input type="password" name="password" required minlength="10" />
+      </div>
+      <div class="form-group">
+        <label>Roll</label>
+        <select name="role" id="role-select" onchange="toggleTenant(this.value)">
+          <option value="admin">admin — klientadmin</option>
+          <option value="superadmin">superadmin</option>
+        </select>
+      </div>
+      <div class="form-group" id="tenant-group">
+        <label>Klient <span class="required">*</span></label>
+        <select name="tenant_id">
+          <option value="">— Välj klient —</option>
+          <% tenants.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Skapa</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lösenordsåterställning modal -->
+<div id="reset-pw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;display:none;align-items:center;justify-content:center">
+  <div style="background:var(--color-surface);border-radius:12px;padding:2rem;width:360px;max-width:90vw">
+    <h3 id="reset-pw-title" style="margin-bottom:1rem">Nytt lösenord</h3>
+    <form method="POST" id="reset-pw-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Nytt lösenord <span class="hint">minst 10 tecken</span></label>
+        <input type="password" name="password" required minlength="10" id="new-pw-input" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Spara</button>
+        <button type="button" class="btn btn-ghost" onclick="closeResetPw()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function toggleTenant(role) {
+  document.getElementById('tenant-group').style.display = role === 'superadmin' ? 'none' : 'block';
+}
+function showResetPw(id, name) {
+  document.getElementById('reset-pw-title').textContent = 'Nytt lösenord för ' + name;
+  document.getElementById('reset-pw-form').action = '/superadmin/admins/' + id + '/reset-password';
+  document.getElementById('new-pw-input').value = '';
+  var modal = document.getElementById('reset-pw-modal');
+  modal.style.display = 'flex';
+}
+function closeResetPw() {
+  document.getElementById('reset-pw-modal').style.display = 'none';
+}
+</script>
+
+  </div>
+</main>
+<script src="/static/admin/js/admin.js"></script>
+</body>
+</html>

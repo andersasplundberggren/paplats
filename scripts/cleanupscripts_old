@@ -1,0 +1,150 @@
+'use strict';
+
+require('dotenv').config();
+
+const db = require('../src/config/database');
+const query = db.query;
+const transaction = db.transaction;
+const testConnection = db.testConnection;
+
+const HOURS = 48;
+const APPLY = process.argv.indexOf('--apply') !== -1;
+const VERBOSE = process.argv.indexOf('--verbose') !== -1;
+
+async function getExpiredSessions(conn) {
+  const result = await conn.execute(
+    'SELECT ' +
+      'id, ' +
+      'assignment_id, ' +
+      'session_token, ' +
+      'nickname, ' +
+      'contact, ' +
+      'started_at, ' +
+      'completed_at ' +
+    'FROM user_sessions ' +
+    'WHERE COALESCE(completed_at, started_at) < (NOW() - INTERVAL ? HOUR) ' +
+    'ORDER BY COALESCE(completed_at, started_at) ASC',
+    [HOURS]
+  );
+
+  return result[0];
+}
+
+async function countRelatedRows(conn, sessionIds) {
+  if (!sessionIds.length) {
+    return {
+      notesCount: 0,
+      progressCount: 0
+    };
+  }
+
+  var placeholders = sessionIds.map(function () { return '?'; }).join(',');
+
+  var notesResult = await conn.execute(
+    'SELECT COUNT(*) AS count ' +
+    'FROM user_notes ' +
+    'WHERE session_id IN (' + placeholders + ')',
+    sessionIds
+  );
+
+  var progressResult = await conn.execute(
+    'SELECT COUNT(*) AS count ' +
+    'FROM user_progress ' +
+    'WHERE session_id IN (' + placeholders + ')',
+    sessionIds
+  );
+
+  var notesRows = notesResult[0];
+  var progressRows = progressResult[0];
+
+  return {
+    notesCount: (notesRows && notesRows[0] && notesRows[0].count) || 0,
+    progressCount: (progressRows && progressRows[0] && progressRows[0].count) || 0
+  };
+}
+
+async function deleteExpiredSessions(sessionIds) {
+  if (!sessionIds.length) {
+    return 0;
+  }
+
+  return transaction(async function (conn) {
+    var placeholders = sessionIds.map(function () { return '?'; }).join(',');
+
+    var result = await conn.execute(
+      'DELETE FROM user_sessions ' +
+      'WHERE id IN (' + placeholders + ')',
+      sessionIds
+    );
+
+    return (result[0] && result[0].affectedRows) || 0;
+  });
+}
+
+async function main() {
+  await testConnection();
+
+  var sessions = await transaction(async function (conn) {
+    var expired = await getExpiredSessions(conn);
+    var sessionIds = expired.map(function (row) { return row.id; });
+    var related = await countRelatedRows(conn, sessionIds);
+
+    return {
+      expired: expired,
+      related: related
+    };
+  });
+
+  var expiredSessions = sessions.expired;
+  var sessionIds = expiredSessions.map(function (row) { return row.id; });
+
+  console.log('========================================');
+  console.log('Gallring av användarsessioner');
+  console.log('========================================');
+  console.log('Regel: äldre än ' + HOURS + ' timmar');
+  console.log('Läge: ' + (APPLY ? 'SKARP KÖRNING' : 'TORRKÖRNING'));
+  console.log('');
+
+  if (!expiredSessions.length) {
+    console.log('Inga användarsessioner uppfyller gallringsregeln.');
+    return;
+  }
+
+  console.log('Sessioner att gallra: ' + expiredSessions.length);
+  console.log('Tillhörande user_progress rader: ' + sessions.related.progressCount);
+  console.log('Tillhörande user_notes rader: ' + sessions.related.notesCount);
+  console.log('');
+
+  if (VERBOSE || !APPLY) {
+    console.log('Kandidater:');
+
+    expiredSessions.forEach(function (row) {
+      console.log(
+        '- session_id=' + row.id +
+        ' assignment_id=' + row.assignment_id +
+        ' started_at=' + row.started_at +
+        ' completed_at=' + (row.completed_at || 'NULL') +
+        ' nickname=' + (row.nickname || 'NULL') +
+        ' contact=' + (row.contact || 'NULL')
+      );
+    });
+
+    console.log('');
+  }
+
+  if (!APPLY) {
+    console.log('Ingen data raderades.');
+    console.log('Kör med --apply för att utföra gallringen på riktigt.');
+    return;
+  }
+
+  var deleted = await deleteExpiredSessions(sessionIds);
+
+  console.log('Raderade användarsessioner: ' + deleted);
+  console.log('Relaterade user_progress och user_notes raderades automatiskt via ON DELETE CASCADE.');
+}
+
+main().catch(function (err) {
+  console.error('[cleanupUserSessions] Fel:', err);
+  process.exit(1);
+});

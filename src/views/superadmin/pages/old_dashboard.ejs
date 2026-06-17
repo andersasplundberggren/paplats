@@ -1,0 +1,73 @@
+<%- include('../partials/header', { title, csrfToken, superAdminName }) %>
+
+<div class="page-header">
+  <h1>Superadmin Dashboard</h1>
+  <p class="text-muted">Inloggad som <%= superAdminName %></p>
+</div>
+
+<div class="stats-grid">
+  <a href="/superadmin/tenants" class="stat-card">
+    <div class="stat-number"><%= stats.tenants %></div>
+    <div class="stat-label">Klienter</div>
+  </a>
+  <a href="/superadmin/admins" class="stat-card">
+    <div class="stat-number"><%= stats.admins %></div>
+    <div class="stat-label">Administratörer</div>
+  </a>
+  <div class="stat-card">
+    <div class="stat-number"><%= stats.places %></div>
+    <div class="stat-label">Platser totalt</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-number"><%= stats.trails %></div>
+    <div class="stat-label">Tipspromenader</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:2rem">
+  <h2 class="card-title">Klienter</h2>
+  <% if (tenants.length === 0) { %>
+    <p class="text-muted">Inga klienter ännu.</p>
+  <% } else { %>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Namn</th>
+        <th>Status</th>
+        <th>Admins</th>
+        <th>Platser</th>
+        <th>Promenader</th>
+        <th>Åtgärder</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% tenants.forEach(t => { %>
+      <tr>
+        <td><strong><%= t.name %></strong><br><small class="text-muted"><%= t.slug %></small></td>
+        <td><span class="badge <%= t.status === 'active' ? 'badge-green' : 'badge-gray' %>"><%= t.status %></span></td>
+        <td><%= t.admin_count %></td>
+        <td><%= t.place_count %></td>
+        <td><%= t.trail_count %></td>
+        <td class="action-cell">
+          <a href="/superadmin/admins?tenant_id=<%= t.id %>" class="btn btn-xs btn-secondary">Admins</a>
+        </td>
+      </tr>
+      <% }) %>
+    </tbody>
+  </table>
+  <% } %>
+</div>
+
+<div class="card" style="margin-top:1.5rem">
+  <h2 class="card-title">Snabbval</h2>
+  <div class="action-row">
+    <a href="/superadmin/tenants" class="btn btn-primary">+ Ny klient</a>
+    <a href="/superadmin/admins" class="btn btn-secondary">+ Ny administratör</a>
+  </div>
+</div>
+
+  </div>
+</main>
+<script src="/static/admin/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,98 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Places</h1>
+  <a href="/admin/places/new" class="btn btn-primary">+ New place</a>
+</div>
+
+<div class="filter-bar">
+  <form method="GET" action="/admin/places" class="filter-form">
+    <input
+      type="text"
+      name="search"
+      placeholder="Search title or slug…"
+      value="<%= filters.search %>"
+      class="input-text"
+    />
+    <select name="status" class="input-select">
+      <option value="">All statuses</option>
+      <option value="published" <%= filters.status === 'published' ? 'selected' : '' %>>Published</option>
+      <option value="draft"     <%= filters.status === 'draft'     ? 'selected' : '' %>>Draft</option>
+    </select>
+    <select name="category_id" class="input-select">
+      <option value="">All categories</option>
+      <% categories.forEach(cat => { %>
+        <option value="<%= cat.id %>" <%= filters.category_id == cat.id ? 'selected' : '' %>><%= cat.name %></option>
+      <% }) %>
+    </select>
+    <button type="submit" class="btn btn-secondary">Filter</button>
+    <a href="/admin/places" class="btn btn-ghost">Clear</a>
+  </form>
+
+  <div class="filter-counts">
+    <span class="badge badge-green"><%= counts.published %> published</span>
+    <span class="badge badge-gray"><%= counts.draft %> draft</span>
+  </div>
+</div>
+
+<% if (places.length === 0) { %>
+  <div class="empty-state">
+    <p>No places found.</p>
+    <a href="/admin/places/new" class="btn btn-primary">Create the first place</a>
+  </div>
+<% } else { %>
+  <div class="table-wrapper">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Status</th>
+          <th>Category</th>
+          <th>Coords</th>
+          <th>Radius</th>
+          <th>Media</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% places.forEach(p => { %>
+        <tr>
+          <td>
+            <strong><a href="/admin/places/<%= p.id %>/edit"><%= p.title %></a></strong>
+            <br/><small class="text-muted"><%= p.slug %></small>
+          </td>
+          <td>
+            <span class="badge <%= p.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+              <%= p.status %>
+            </span>
+          </td>
+          <td><%= p.category_name || '—' %></td>
+          <td class="monospace"><%= parseFloat(p.latitude).toFixed(5) %>, <%= parseFloat(p.longitude).toFixed(5) %></td>
+          <td><%= p.activation_radius_meters %> m</td>
+          <td><span class="badge badge-blue"><%= p.media_count %></span></td>
+          <td class="action-cell">
+            <a href="/admin/places/<%= p.id %>/edit" class="btn btn-xs btn-secondary">Edit</a>
+            <form method="POST" action="/admin/places/<%= p.id %>/publish" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-xs <%= p.status === 'published' ? 'btn-ghost' : 'btn-primary' %>">
+                <%= p.status === 'published' ? 'Unpublish' : 'Publish' %>
+              </button>
+            </form>
+            <button
+              class="btn btn-xs btn-danger"
+              onclick="confirmDelete('/admin/places/<%= p.id %>/delete', '<%= p.title.replace(/'/g, '\\\'') %>', this)"
+            >Delete</button>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<!-- Hidden delete form, reused by JS -->
+<form id="delete-form" method="POST" style="display:none">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+</form>
+
+<%- include('../../partials/footer') %>

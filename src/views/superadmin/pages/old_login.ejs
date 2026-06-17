@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Superadmin — GeoExp</title>
+  <link rel="stylesheet" href="/static/admin/css/admin.css" />
+  <style>
+    body { background: linear-gradient(135deg, #0d1b2a 0%, #1a2d4a 100%); min-height:100vh; }
+    .sa-login-card {
+      width:100%; max-width:380px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      backdrop-filter: blur(10px);
+    }
+    .sa-login-title { color:#fff; font-size:1.4rem; font-weight:700; text-align:center; margin-bottom:.35rem; }
+    .sa-login-sub   { color:rgba(255,255,255,0.45); font-size:.82rem; text-align:center; margin-bottom:1.75rem; }
+    .sa-label       { color:rgba(255,255,255,0.7); font-size:.85rem; font-weight:500; display:block; margin-bottom:.35rem; }
+    .sa-input       { width:100%; padding:.55rem .75rem; background:rgba(255,255,255,0.08);
+                      border:1px solid rgba(255,255,255,0.15); border-radius:8px; color:#fff; font-size:.9rem; }
+    .sa-input:focus { outline:none; border-color:rgba(255,255,255,0.4); }
+    .sa-btn         { width:100%; padding:.6rem; background:#2563eb; color:#fff; border:none; border-radius:8px;
+                      font-size:.9rem; font-weight:600; cursor:pointer; margin-top:.25rem; }
+    .sa-btn:hover   { background:#1d4ed8; }
+    .sa-error       { background:rgba(220,38,38,0.2); border:1px solid rgba(220,38,38,0.4);
+                      color:#fca5a5; border-radius:8px; padding:.6rem .75rem; margin-bottom:1rem; font-size:.85rem; }
+    .sa-badge       { display:inline-block; background:rgba(37,99,235,0.3); color:#93c5fd;
+                      border:1px solid rgba(37,99,235,0.4); border-radius:99px; font-size:.72rem;
+                      font-weight:600; padding:.15rem .6rem; margin-bottom:1rem; }
+  </style>
+</head>
+<body class="login-body">
+  <div class="sa-login-card">
+    <div style="text-align:center;margin-bottom:1.25rem">
+      <span class="sa-badge">SUPERADMIN</span>
+    </div>
+    <h1 class="sa-login-title">GeoExp</h1>
+    <p class="sa-login-sub">Systemadministration</p>
+
+    <% if (locals.error && error) { %>
+      <div class="sa-error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/superadmin/login">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+      <div class="form-group">
+        <label class="sa-label" for="email">E-post</label>
+        <input class="sa-input" type="email" id="email" name="email" autocomplete="email" required autofocus />
+      </div>
+      <div class="form-group" style="margin-top:.75rem">
+        <label class="sa-label" for="password">Lösenord</label>
+        <input class="sa-input" type="password" id="password" name="password" required />
+      </div>
+      <div style="margin-top:1.25rem">
+        <button class="sa-btn" type="submit">Logga in</button>
+      </div>
+    </form>
+
+    <div style="text-align:center;margin-top:1.25rem">
+      <a href="/admin/login" style="color:rgba(255,255,255,0.35);font-size:.8rem;text-decoration:none">
+        Vanlig admin-inloggning →
+      </a>
+    </div>
+  </div>
+</body>
+</html>

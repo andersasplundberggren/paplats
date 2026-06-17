@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %></title>
+  <link rel="stylesheet" href="/static/admin/css/admin.css" />
+  <style>
+    body { max-width: 900px; margin: 0 auto; padding: 2rem 1rem; }
+    .medal { font-size: 1.2rem; }
+    .completed { color: #16a34a; font-weight: 500; }
+    .not-completed { color: #9ca3af; }
+    .score-bar-wrap { background:#f3f4f6; border-radius:99px; height:8px; width:100px; display:inline-block; vertical-align:middle; margin-left:.5rem }
+    .score-bar { background:#f97316; border-radius:99px; height:8px; }
+  </style>
+</head>
+<body>
+
+  <div style="margin-bottom:2rem">
+    <h1 style="font-size:1.6rem;font-weight:700;margin-bottom:.25rem">
+      Resultat — <%= trail.title %>
+    </h1>
+    <p style="color:#6b7280;font-size:.9rem">
+      <%= sessions.filter(s => s.completed_at).length %> av <%= sessions.length %> deltagare har slutfört promenaden
+    </p>
+  </div>
+
+  <% if (sessions.length === 0) { %>
+    <div style="padding:2rem;background:#f9fafb;border-radius:10px;text-align:center;color:#6b7280">
+      Inga deltagare ännu.
+    </div>
+  <% } else { %>
+
+    <!-- Topplista -->
+    <div style="background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;margin-bottom:2rem">
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f9fafb;border-bottom:1px solid #e5e7eb">
+            <th style="padding:.75rem 1rem;text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">#</th>
+            <th style="padding:.75rem 1rem;text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Namn</th>
+            <th style="padding:.75rem 1rem;text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Kontakt</th>
+            <th style="padding:.75rem 1rem;text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Status</th>
+            <th style="padding:.75rem 1rem;text-align:right;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:#6b7280">Poäng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% const maxScore = questions.reduce((s, q) => s + q.points, 0); %>
+          <% sessions.forEach((s, i) => { %>
+          <tr style="border-bottom:1px solid #f3f4f6">
+            <td style="padding:.75rem 1rem;color:#6b7280;font-weight:500">
+              <% if (i === 0 && s.completed_at) { %>🥇
+              <% } else if (i === 1 && s.completed_at) { %>🥈
+              <% } else if (i === 2 && s.completed_at) { %>🥉
+              <% } else { %><%= i + 1 %>
+              <% } %>
+            </td>
+            <td style="padding:.75rem 1rem;font-weight:600"><%= s.nickname || 'Anonym' %></td>
+            <td style="padding:.75rem 1rem;color:#6b7280;font-size:.88rem"><%= s.contact || '—' %></td>
+            <td style="padding:.75rem 1rem;font-size:.88rem">
+              <% if (s.completed_at) { %>
+                <span class="completed">✓ Klar <%= new Date(s.completed_at).toLocaleTimeString('sv-SE', {hour:'2-digit',minute:'2-digit'}) %></span>
+              <% } else { %>
+                <span class="not-completed">Ej klar</span>
+              <% } %>
+            </td>
+            <td style="padding:.75rem 1rem;text-align:right">
+              <strong><%= s.total_score || 0 %></strong>
+              <% if (maxScore > 0) { %>
+                <span style="color:#9ca3af;font-size:.82rem"> / <%= maxScore %></span>
+                <div class="score-bar-wrap">
+                  <div class="score-bar" style="width:<%= Math.round(((s.total_score || 0) / maxScore) * 100) %>%"></div>
+                </div>
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="font-size:.78rem;color:#9ca3af;text-align:center">
+      Sorterat efter poäng. Sidan uppdateras inte automatiskt — ladda om för senaste resultat.
+    </p>
+
+  <% } %>
+
+</body>
+</html>

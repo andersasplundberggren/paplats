@@ -1,0 +1,73 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Tipspromenader</h1>
+  <a href="/admin/trails/new" class="btn btn-primary">+ Ny promenad</a>
+</div>
+
+<% if (trails.length === 0) { %>
+  <div class="empty-state">
+    <p>Inga tipspromenader skapade ännu.</p>
+    <a href="/admin/trails/new" class="btn btn-primary">Skapa din första promenad</a>
+  </div>
+<% } else { %>
+  <div class="card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Titel</th>
+          <th>Kod</th>
+          <th>Läge</th>
+          <th>Status</th>
+          <th>Svårighetsgrad</th>
+          <th>Stopp</th>
+          <th>Skapad</th>
+          <th>Åtgärder</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% trails.forEach(t => { %>
+        <tr>
+          <td><strong><a href="/admin/trails/<%= t.id %>/stops"><%= t.title %></a></strong></td>
+          <td>
+            <code style="background:var(--color-bg);padding:.2rem .5rem;border-radius:4px;font-weight:700;letter-spacing:.05em">
+              <%= t.access_code %>
+            </code>
+          </td>
+          <td>
+            <span class="badge <%= t.grading_mode === 'auto' ? 'badge-blue' : 'badge-orange' %>">
+              <%= t.grading_mode === 'auto' ? 'Självrätt.' : 'Insamlad' %>
+            </span>
+          </td>
+          <td>
+            <span class="badge <%= t.status === 'published' ? 'badge-green' : 'badge-gray' %>">
+              <%= t.status === 'published' ? 'Publicerad' : 'Utkast' %>
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-blue">
+              <%= t.difficulty === 'easy' ? 'Lätt' : t.difficulty === 'medium' ? 'Medel' : 'Svår' %>
+            </span>
+          </td>
+          <td><%= t.stop_count %></td>
+          <td><%= new Date(t.created_at).toLocaleDateString('sv-SE') %></td>
+          <td class="action-cell">
+            <a href="/admin/trails/<%= t.id %>/stops" class="btn btn-xs btn-secondary">Stopp</a>
+            <a href="/admin/trails/<%= t.id %>/edit" class="btn btn-xs btn-ghost">Redigera</a>
+            <% if (t.grading_mode === 'collected') { %>
+              <a href="/admin/trails/<%= t.id %>/results" class="btn btn-xs btn-ghost">Resultat</a>
+            <% } %>
+            <form method="POST" action="/admin/trails/<%= t.id %>/delete" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-xs btn-danger"
+                onclick="return confirm('Radera <%= t.title %>?')">Radera</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<%- include('../../partials/footer') %>

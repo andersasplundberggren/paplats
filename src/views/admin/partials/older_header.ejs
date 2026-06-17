@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title><%= title %> — GeoExp Admin</title>
+  <link rel="stylesheet" href="/static/admin/css/admin.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    .admin-nav {
+      display: flex; align-items: center;
+      background: #0f172a; border-bottom: 1px solid #1e293b;
+      padding: 0 1.5rem; height: 56px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand a {
+      font-size: 1rem; font-weight: 700; color: #f1f5f9;
+      text-decoration: none; margin-right: 1.5rem; white-space: nowrap;
+    }
+    .nav-groups {
+      display: flex; align-items: stretch; height: 100%;
+      list-style: none; margin: 0; padding: 0; flex: 1;
+    }
+    .nav-item { position: relative; display: flex; align-items: center; }
+    .nav-item > a, .nav-group-btn {
+      display: flex; align-items: center; gap: .3rem;
+      padding: 0 .9rem; height: 100%;
+      font-size: .85rem; font-weight: 500;
+      color: #94a3b8; text-decoration: none;
+      background: none; border: none; cursor: pointer; white-space: nowrap;
+      transition: color .15s, background .15s;
+    }
+    .nav-item > a:hover, .nav-group-btn:hover { color: #f1f5f9; background: #1e293b; }
+    .nav-dropdown {
+      display: none; position: absolute;
+      top: calc(100% + 1px); left: 0; min-width: 220px;
+      background: #1e293b; border: 1px solid #334155;
+      border-radius: 0 0 10px 10px; padding: .4rem 0;
+      box-shadow: 0 8px 24px rgba(0,0,0,.35);
+      list-style: none; margin: 0;
+    }
+    .nav-item:hover .nav-dropdown { display: block; }
+    .nav-dropdown li a {
+      display: block; padding: .5rem 1.1rem;
+      font-size: .83rem; color: #94a3b8; text-decoration: none;
+      transition: color .12s, background .12s;
+    }
+    .nav-dropdown li a:hover { color: #f1f5f9; background: #0f172a; }
+    .nav-dropdown .divider { border: none; border-top: 1px solid #334155; margin: .35rem 0; }
+    .nav-dropdown .group-label {
+      padding: .4rem 1.1rem .2rem; font-size: .68rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .07em; color: #475569; pointer-events: none;
+    }
+    .nav-group-btn .chevron { font-size: .65rem; opacity: .6; transition: transform .15s; }
+    .nav-item:hover .nav-group-btn .chevron { transform: rotate(180deg); }
+    .nav-right { display: flex; align-items: center; gap: .75rem; margin-left: auto; }
+    .nav-tenant { font-size: .75rem; color: #475569; white-space: nowrap; }
+    .nav-tenant strong { color: #64748b; }
+    .nav-role-badge {
+      font-size: .68rem; padding: .15rem .5rem; border-radius: 999px;
+      background: #1e293b; color: #64748b; border: 1px solid #334155; white-space: nowrap;
+    }
+    .btn-link {
+      background: none; border: none; color: #64748b; font-size: .82rem;
+      cursor: pointer; padding: .3rem .6rem; border-radius: 6px;
+      transition: color .12s, background .12s;
+    }
+    .btn-link:hover { color: #f87171; background: rgba(248,113,113,.08); }
+    .impersonation-bar {
+      background: #7c3aed; color: #fff; text-align: center;
+      padding: .4rem 1rem; font-size: .8rem;
+      display: flex; align-items: center; justify-content: center; gap: .75rem;
+    }
+    .impersonation-bar a { color: #ddd6fe; text-decoration: underline; font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<% if (locals.isImpersonating && isImpersonating) { %>
+<div class="impersonation-bar">
+  Du agerar som <strong><%= locals.tenantName || 'tenant' %></strong>.
+  <a href="/superadmin/stop-impersonating">Avsluta</a>
+</div>
+<% } %>
+
+<nav class="admin-nav">
+  <div class="nav-brand"><a href="/admin/dashboard">SpotOn</a></div>
+  <ul class="nav-groups">
+    <li class="nav-item">
+      <a href="/admin/dashboard">Dashboard</a>
+    </li>
+    <li class="nav-item">
+      <button class="nav-group-btn" type="button">Uppdrag <span class="chevron">▾</span></button>
+      <ul class="nav-dropdown">
+        <li><a href="/admin/assignments">Alla uppdrag</a></li>
+        <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+          <li><a href="/admin/assignments/new">+ Nytt uppdrag</a></li>
+        <% } %>
+      </ul>
+    </li>
+    <li class="nav-item">
+      <button class="nav-group-btn" type="button">Media <span class="chevron">▾</span></button>
+      <ul class="nav-dropdown">
+        <li><a href="/admin/media">Alla mediafiler</a></li>
+        <li><a href="/admin/media/upload">+ Ladda upp</a></li>
+      </ul>
+    </li>
+    <% if (locals.adminRole === 'admin' || locals.adminRole === 'systemadmin') { %>
+    <li class="nav-item">
+      <button class="nav-group-btn" type="button">Inställningar <span class="chevron">▾</span></button>
+      <ul class="nav-dropdown">
+        <li><a href="/admin/categories">Kategorier</a></li>
+      </ul>
+    </li>
+    <% } %>
+  </ul>
+  <div class="nav-right">
+    <% if (locals.tenantName) { %><span class="nav-tenant"><strong><%= tenantName %></strong></span><% } %>
+    <% if (locals.adminRole) { %><span class="nav-role-badge"><%= adminRole %></span><% } %>
+    <form method="POST" action="/admin/logout" style="margin:0">
+      <% if (typeof csrfToken !== 'undefined') { %>
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <% } %>
+      <button type="submit" class="btn-link">Logga ut</button>
+    </form>
+  </div>
+</nav>
+
+<main class="main-content">
+  <div class="container">
+    <% if (locals.success && success) { %><div class="alert alert-success"><%= success %></div><% } %>
+    <% if (locals.error && error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<script src="/static/admin/js/help.js"></script>

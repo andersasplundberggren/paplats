@@ -1,0 +1,67 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Ladda upp media</h1>
+  <a href="/admin/media" class="btn btn-ghost">← Mediabibliotek</a>
+</div>
+
+<div class="form-card" style="max-width:560px">
+  <form
+    method="POST"
+    action="/admin/media/upload"
+    enctype="multipart/form-data"
+    id="upload-form"
+  >
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+    <div class="form-group">
+      <label>Mediatyp</label>
+      <div style="display:flex;gap:.75rem;margin-bottom:.75rem">
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-weight:400">
+          <input type="radio" name="media_type_hint" value="image" checked /> Bild
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-weight:400">
+          <input type="radio" name="media_type_hint" value="video" /> Video
+        </label>
+        <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-weight:400">
+          <input type="radio" name="media_type_hint" value="audio" /> Ljud
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="file">Välj fil <span class="required">*</span></label>
+      <input
+        type="file"
+        id="file"
+        name="file"
+        accept="image/jpeg,image/png,image/webp,image/gif,video/mp4,video/quicktime,video/webm,audio/mpeg,audio/mp4,audio/wav,audio/x-m4a"
+        required
+        style="display:block;width:100%;padding:.5rem;border:1px solid #ccc;border-radius:6px;background:#fff;cursor:pointer"
+      />
+      <p style="font-size:.78rem;color:#888;margin-top:.4rem">
+        Bilder: JPEG, PNG, WebP, GIF — max 20 MB<br/>
+        Video: MP4, MOV, WebM — max 500 MB<br/>
+        Ljud: MP3, M4A, WAV — max 100 MB
+      </p>
+    </div>
+
+    <div class="form-group">
+      <label for="alt_text">Alt-text / beskrivning (valfritt)</label>
+      <input
+        type="text"
+        id="alt_text"
+        name="alt_text"
+        maxlength="255"
+        placeholder="Beskriv filen"
+      />
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary" id="upload-btn">Ladda upp fil</button>
+      <a href="/admin/media" class="btn btn-ghost">Avbryt</a>
+    </div>
+  </form>
+</div>
+
+<%- include('../../partials/footer') %>

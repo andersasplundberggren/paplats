@@ -1,0 +1,100 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Kategorier</h1>
+</div>
+
+<div class="content-columns">
+
+  <div class="card">
+    <h2 class="card-title">Befintliga kategorier</h2>
+    <% if (categories.length === 0) { %>
+      <p class="text-muted">Inga kategorier ännu.</p>
+    <% } else { %>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Namn</th>
+            <th>Slug</th>
+            <th>Platser</th>
+            <th>Ordning</th>
+            <th>Åtgärder</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% categories.forEach(function(cat) { %>
+          <tr>
+            <td><strong><%= cat.name %></strong></td>
+            <td class="monospace"><%= cat.slug %></td>
+            <td><%= cat.place_count %></td>
+            <td><%= cat.sort_order %></td>
+            <td class="action-cell">
+              <button
+                class="btn btn-xs btn-secondary"
+                onclick="startEdit('<%= cat.id %>', '<%= cat.name.replace(/\\/g,'\\\\').replace(/'/g,'\\'') %>', '<%= (cat.description||'').replace(/\\/g,'\\\\').replace(/'/g,'\\'') %>', '<%= cat.sort_order %>')"
+              >Redigera</button>
+              <form method="POST" action="/admin/categories/<%= cat.id %>/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button
+                  type="submit"
+                  class="btn btn-xs btn-danger"
+                  onclick="return confirm('Radera kategorin? Platser behåller sin data men förlorar kategorin.')"
+                >Radera</button>
+              </form>
+            </td>
+          </tr>
+          <% }); %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <div class="card" id="category-form-card">
+    <h2 class="card-title" id="category-form-title">Ny kategori</h2>
+    <form method="POST" id="category-form" action="/admin/categories">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <input type="hidden" id="edit-id" value="" />
+
+      <div class="form-group">
+        <label for="cat-name">Namn <span class="required">*</span></label>
+        <input type="text" id="cat-name" name="name" required maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label for="cat-desc">Beskrivning</label>
+        <textarea id="cat-desc" name="description" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="cat-order">Sorteringsordning</label>
+        <input type="number" id="cat-order" name="sort_order" value="0" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="cat-submit">Skapa</button>
+        <button type="button" class="btn btn-ghost" id="cat-cancel" style="display:none" onclick="resetForm()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+
+</div>
+
+<script>
+function startEdit(id, name, description, sortOrder) {
+  document.getElementById('category-form').action = '/admin/categories/' + id;
+  document.getElementById('cat-name').value = name;
+  document.getElementById('cat-desc').value = description;
+  document.getElementById('cat-order').value = sortOrder;
+  document.getElementById('cat-submit').textContent = 'Spara';
+  document.getElementById('cat-cancel').style.display = 'inline-flex';
+  document.getElementById('category-form-title').textContent = 'Redigera kategori';
+  document.getElementById('category-form-card').scrollIntoView({ behavior: 'smooth' });
+}
+
+function resetForm() {
+  document.getElementById('category-form').action = '/admin/categories';
+  document.getElementById('category-form').reset();
+  document.getElementById('cat-submit').textContent = 'Skapa';
+  document.getElementById('cat-cancel').style.display = 'none';
+  document.getElementById('category-form-title').textContent = 'Ny kategori';
+}
+</script>
+
+<%- include('../../partials/footer') %>

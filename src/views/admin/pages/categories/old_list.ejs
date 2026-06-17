@@ -1,0 +1,78 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Categories</h1>
+</div>
+
+<div class="content-columns">
+
+  <!-- Existing categories -->
+  <div class="card">
+    <h2 class="card-title">Existing categories</h2>
+    <% if (categories.length === 0) { %>
+      <p class="text-muted">No categories yet.</p>
+    <% } else { %>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Places</th>
+            <th>Order</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% categories.forEach(cat => { %>
+          <tr>
+            <td><strong><%= cat.name %></strong></td>
+            <td class="monospace"><%= cat.slug %></td>
+            <td><%= cat.place_count %></td>
+            <td><%= cat.sort_order %></td>
+            <td class="action-cell">
+              <button
+                class="btn btn-xs btn-secondary"
+                onclick="document.getElementById('cat-form-id').value='<%= cat.id %>';document.getElementById('cat-name').value=this.dataset.name;document.getElementById('category-form').action='/admin/categories/<%= cat.id %>';document.getElementById('cat-submit').textContent='Spara';" data-name="<%= cat.name %>"
+              >Edit</button>
+              <form method="POST" action="/admin/categories/<%= cat.id %>/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button
+                  type="submit"
+                  class="btn btn-xs btn-danger"
+                  onclick="return confirm('Delete <%= cat.name.replace(/'/g,'\\\'') %>? Places will keep their data but lose the category.')"
+                >Delete</button>
+              </form>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    <% } %>
+  </div>
+
+  <!-- Create / Edit form -->
+  <div class="card" id="category-form-card">
+    <h2 class="card-title" id="category-form-title">New category</h2>
+    <form method="POST" id="category-form" action="/admin/categories" class="form-body">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label for="cat-name">Name <span class="required">*</span></label>
+        <input type="text" id="cat-name" name="name" required maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label for="cat-desc">Description</label>
+        <textarea id="cat-desc" name="description" rows="2"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="cat-order">Sort order</label>
+        <input type="number" id="cat-order" name="sort_order" value="0" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary" id="cat-submit">Create</button>
+        <button type="button" class="btn btn-ghost" id="cat-cancel" style="display:none" onclick="resetCategoryForm()">Cancel</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>

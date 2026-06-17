@@ -1,0 +1,176 @@
+<%- include('../../partials/header', { title, csrfToken, superAdminName }) %>
+
+<div class="page-header">
+  <h1>Administratörer</h1>
+</div>
+
+<div class="content-columns">
+  <div class="card">
+    <h2 class="card-title">Alla admins</h2>
+
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding:.75rem;background:var(--color-bg);border-radius:8px;font-size:.82rem">
+      <div><span class="badge badge-purple">Superadmin</span> <span style="color:var(--color-muted)">Full åtkomst till hela plattformen</span></div>
+      <div><span class="badge badge-blue">Admin</span> <span style="color:var(--color-muted)">Hanterar sin klient, skapar uppdrag och redaktörer</span></div>
+      <div><span class="badge badge-orange">Redaktör</span> <span style="color:var(--color-muted)">Redigerar tilldelade uppdrag och innehåll</span></div>
+    </div>
+
+    <table class="data-table">
+      <thead>
+        <tr><th>Namn</th><th>E-post</th><th>Roll</th><th>Klient</th><th>Åtgärder</th></tr>
+      </thead>
+      <tbody>
+        <% admins.forEach(a => { %>
+        <tr>
+          <td><strong><%= a.name %></strong></td>
+          <td><%= a.email %></td>
+          <td>
+            <span class="badge <%=
+              a.role === 'superadmin' ? 'badge-purple' :
+              a.role === 'admin'      ? 'badge-blue'   : 'badge-orange'
+            %>">
+              <%= a.role === 'superadmin' ? 'Superadmin' : a.role === 'admin' ? 'Admin' : 'Redaktör' %>
+            </span>
+          </td>
+          <td><%= a.tenant_name || '—' %></td>
+          <td class="action-cell">
+            <% if (a.role !== 'superadmin') { %>
+              <form method="POST" action="/superadmin/impersonate/<%= a.id %>" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-secondary">Logga in som</button>
+              </form>
+              <button class="btn btn-xs btn-ghost"
+                onclick="showEdit(<%= a.id %>, '<%= a.name.replace(/'/g, "\\'") %>', '<%= a.role %>', '<%= a.tenant_id || '' %>')">
+                Redigera
+              </button>
+              <button class="btn btn-xs btn-ghost"
+                onclick="showResetPw(<%= a.id %>, '<%= a.name.replace(/'/g, "\\'") %>')">
+                Nytt lösenord
+              </button>
+              <form method="POST" action="/superadmin/admins/<%= a.id %>/delete" style="display:inline">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn btn-xs btn-danger"
+                  onclick="return confirm('Radera <%= a.name %>?')">Radera</button>
+              </form>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Ny admin -->
+  <div class="card">
+    <h2 class="card-title">Ny administratör</h2>
+    <form method="POST" action="/superadmin/admins">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Namn <span class="required">*</span></label>
+        <input type="text" name="name" required maxlength="100" />
+      </div>
+      <div class="form-group">
+        <label>E-post <span class="required">*</span></label>
+        <input type="email" name="email" required />
+      </div>
+      <div class="form-group">
+        <label>Lösenord <span class="required">*</span> <span class="hint">minst 10 tecken</span></label>
+        <input type="password" name="password" required minlength="10" />
+      </div>
+      <div class="form-group">
+        <label>Roll <span class="required">*</span></label>
+        <select name="role">
+          <option value="redaktor">Redaktör — redigerar tilldelade uppdrag</option>
+          <option value="admin">Admin — hanterar klienten</option>
+        </select>
+        <p style="font-size:.73rem;color:var(--color-muted);margin-top:.25rem">
+          Admin kan skapa uppdrag och tilldela redaktörer. Redaktör kan bara redigera tilldelade uppdrag.
+        </p>
+      </div>
+      <div class="form-group">
+        <label>Klient</label>
+        <select name="tenant_id">
+          <option value="">— Välj klient —</option>
+          <% tenants.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%">Skapa</button>
+    </form>
+  </div>
+</div>
+
+<!-- Redigera admin modal -->
+<div id="edit-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--color-surface,#fff);border-radius:12px;padding:2rem;width:400px;max-width:90vw">
+    <h3 style="margin-bottom:1rem" id="edit-title">Redigera admin</h3>
+    <form method="POST" id="edit-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Roll</label>
+        <select name="role" id="edit-role">
+          <option value="redaktor">Redaktör</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Klient</label>
+        <select name="tenant_id" id="edit-tenant">
+          <option value="">— Ingen —</option>
+          <% tenants.forEach(t => { %>
+            <option value="<%= t.id %>"><%= t.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Spara</button>
+        <button type="button" class="btn btn-ghost" onclick="closeEdit()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Lösenord modal -->
+<div id="reset-pw-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:999;align-items:center;justify-content:center">
+  <div style="background:var(--color-surface,#fff);border-radius:12px;padding:2rem;width:360px;max-width:90vw">
+    <h3 id="reset-pw-title" style="margin-bottom:1rem">Nytt lösenord</h3>
+    <form method="POST" id="reset-pw-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Nytt lösenord <span class="hint">minst 10 tecken</span></label>
+        <input type="password" name="password" required minlength="10" id="new-pw-input" />
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Spara</button>
+        <button type="button" class="btn btn-ghost" onclick="closeResetPw()">Avbryt</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function showEdit(id, name, role, tenantId) {
+  document.getElementById('edit-title').textContent = 'Redigera ' + name;
+  document.getElementById('edit-form').action = '/superadmin/admins/' + id + '/update';
+  document.getElementById('edit-role').value = role;
+  var sel = document.getElementById('edit-tenant');
+  for (var i = 0; i < sel.options.length; i++) {
+    sel.options[i].selected = sel.options[i].value === String(tenantId);
+  }
+  document.getElementById('edit-modal').style.display = 'flex';
+}
+function closeEdit() { document.getElementById('edit-modal').style.display = 'none'; }
+function showResetPw(id, name) {
+  document.getElementById('reset-pw-title').textContent = 'Nytt lösenord för ' + name;
+  document.getElementById('reset-pw-form').action = '/superadmin/admins/' + id + '/reset-password';
+  document.getElementById('new-pw-input').value = '';
+  document.getElementById('reset-pw-modal').style.display = 'flex';
+}
+function closeResetPw() { document.getElementById('reset-pw-modal').style.display = 'none'; }
+</script>
+
+  </div>
+</main>
+<script src="/static/admin/js/admin.js"></script>
+</body>
+</html>

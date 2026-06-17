@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0f172a" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="På plats">
+  <meta name="description" content="Utforska platser och lås upp digitala upplevelser nära dig.">
+  <title>På plats</title>
+  <link rel="manifest" href="/app/pwa/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/app/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/app/icons/icon-192.png">
+  <link rel="stylesheet" href="/app/pwa/paplats.css">
+</head>
+
+<body data-view="code" data-sheet="none">
+
+  <!-- ═══════════════════════════════════════════════════
+       DIALOGER / MODALER
+  ═══════════════════════════════════════════════════ -->
+
+  <!-- iOS installationsguide -->
+  <dialog id="iosInstallModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <span class="modal-title">Installera På plats</span>
+        <button id="iosInstallCloseBtn" class="modal-close" aria-label="Stäng">✕</button>
+      </div>
+      <p class="modal-body-text">Lägg till appen på hemskärmen för bättre upplevelse.</p>
+      <ol class="install-steps">
+        <li><strong>Tryck på dela-knappen</strong> <span class="install-hint">□↑ i Safari längst ned.</span></li>
+        <li><strong>Välj "Lägg till på hemskärmen"</strong></li>
+        <li><strong>Tryck på "Lägg till"</strong></li>
+      </ol>
+      <button id="iosInstallDoneBtn" class="btn btn-primary btn-full">Klar</button>
+    </div>
+  </dialog>
+
+  <!-- Bekräftelse: lämna uppdrag -->
+  <dialog id="leaveConfirmModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <span class="modal-title">Avsluta uppdraget?</span>
+      </div>
+      <p id="leaveConfirmText" class="modal-body-text">Dina framsteg sparas.</p>
+      <div class="modal-actions">
+        <button id="leaveConfirmCancelBtn" class="btn btn-secondary">Avbryt</button>
+        <button id="leaveConfirmOkBtn" class="btn btn-danger">Avsluta</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Ledtråd-modal -->
+  <dialog id="clueModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <span class="modal-title">Ledtråd</span>
+        <button id="clueModalCloseBtn" class="modal-close" aria-label="Stäng">✕</button>
+      </div>
+      <p id="clueModalText" class="modal-body-text clue-text"></p>
+    </div>
+  </dialog>
+
+  <!-- Dela gruppkod -->
+  <dialog id="shareGroupModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <span class="modal-title">Bjud in till gruppen</span>
+        <button id="shareGroupCloseBtn" class="modal-close" aria-label="Stäng">✕</button>
+      </div>
+      <p class="modal-body-text">Dela den här koden med dina medspelare:</p>
+      <div class="share-code-display">
+        <span id="shareGroupCode" class="share-code">——</span>
+        <button id="copyGroupCodeBtn" class="btn btn-ghost btn-sm">Kopiera</button>
+      </div>
+      <button id="shareGroupNativeBtn" class="btn btn-primary btn-full mt-1">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        Dela via telefonen
+      </button>
+    </div>
+  </dialog>
+
+  <!-- Lightbox -->
+  <div id="lightbox" class="lightbox" aria-modal="true" role="dialog" hidden>
+    <button id="lightboxCloseBtn" class="lightbox-close" aria-label="Stäng">✕</button>
+    <div class="lightbox-content">
+      <img id="lightboxImg" src="" alt="" class="lightbox-img">
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast" aria-live="polite" aria-atomic="true"></div>
+
+
+  <!-- ═══════════════════════════════════════════════════
+       APPSKALET
+  ═══════════════════════════════════════════════════ -->
+  <div id="appShell" class="app-shell">
+
+    <!-- ── VY: KOD ─────────────────────────────────── -->
+    <section id="viewCode" class="view view-code" data-name="code">
+      <header class="view-header">
+        <div class="app-wordmark">På plats</div>
+        <button id="installBtn" class="btn btn-ghost install-btn hidden">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 15V3m0 12-4-4m4 4 4-4M2 17l.621 2.485A2 2 0 0 0 4.561 21h14.878a2 2 0 0 0 1.94-1.515L22 17"/></svg>
+          Installera
+        </button>
+      </header>
+
+      <div class="code-hero">
+        <div class="code-hero-icon" aria-hidden="true">
+          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="32" cy="32" r="32" fill="url(#heroGrad)"/>
+            <circle cx="32" cy="28" r="9" fill="rgba(255,255,255,.2)"/>
+            <circle cx="32" cy="28" r="3.5" fill="white" opacity=".9"/>
+            <path d="M32 37c0 0-10 11-10 16h20c0-5-10-16-10-16z" fill="rgba(255,255,255,.15)"/>
+            <defs>
+              <linearGradient id="heroGrad" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+                <stop offset="0%" stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#1d4ed8"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <h1 class="code-hero-title">Välkommen till<br><em>På plats</em></h1>
+        <p class="code-hero-sub">Ange din uppdragskod för att utforska platser nära dig.</p>
+      </div>
+
+      <div class="code-form-card">
+        <label for="codeInput" class="form-label">Uppdragskod</label>
+        <div class="code-input-row">
+          <input id="codeInput" type="text" inputmode="text" autocomplete="off"
+            autocapitalize="characters" spellcheck="false" maxlength="20"
+            placeholder="T.ex. HBGT24" class="code-input" aria-label="Uppdragskod">
+          <button id="loadAssignmentBtn" class="btn btn-primary" type="button">Hämta</button>
+        </div>
+        <div id="codeStatus" class="form-status" aria-live="polite"></div>
+      </div>
+
+      <!-- Återuppta session -->
+      <div id="resumeCard" class="resume-card hidden">
+        <div>
+          <div class="resume-card-label">Pågående uppdrag</div>
+          <div id="resumeTitle" class="resume-card-title">—</div>
+        </div>
+        <div class="resume-card-actions">
+          <button id="resumeBtn" class="btn btn-primary btn-sm">Fortsätt</button>
+          <button id="resumeClearBtn" class="btn btn-ghost btn-sm">Rensa</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── VY: INTRO ───────────────────────────────── -->
+    <section id="viewIntro" class="view view-intro" data-name="intro">
+      <header class="view-header view-header-back">
+        <button id="introBackBtn" class="btn btn-ghost btn-icon" aria-label="Tillbaka">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span id="introAssignmentType" class="eyebrow">Uppdrag</span>
+        <div style="width:38px"></div>
+      </header>
+
+      <div class="intro-body">
+        <h2 id="introTitle" class="intro-title">Laddar...</h2>
+        <p id="introSubtitle" class="intro-subtitle"></p>
+        <div id="introDescription" class="intro-description"></div>
+
+        <div class="intro-meta-row">
+          <div class="intro-meta-chip">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C8 2 5 5 5 9c0 5 7 13 7 13s7-8 7-13c0-4-3-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+            <span id="introPlaceCountText">— platser</span>
+          </div>
+          <div id="introTimelimit" class="intro-meta-chip hidden">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="introTimelimitText">—</span>
+          </div>
+        </div>
+
+        <!-- Namn -->
+        <div class="intro-field-group">
+          <label for="nicknameInput" class="form-label">Ditt namn (valfritt)</label>
+          <input id="nicknameInput" type="text" autocomplete="name" maxlength="40"
+            placeholder="Vad ska vi kalla dig?" class="form-input">
+        </div>
+
+        <!-- Grupp-sektion — visas bara för trail-uppdrag -->
+        <div id="groupSection" class="group-section hidden">
+          <div class="group-section-title">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Grupptävling
+          </div>
+          <p class="group-section-desc">Tävla mot vänner! Skapa en grupp och dela koden, eller gå med i en befintlig grupp.</p>
+
+          <!-- Skapa grupp -->
+          <button id="createGroupBtn" class="btn btn-secondary btn-full">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Skapa grupp
+          </button>
+
+          <!-- Grupp skapad — visa kod -->
+          <div id="groupCreated" class="group-created hidden">
+            <div class="group-created-label">Din gruppkod</div>
+            <div class="group-code-row">
+              <span id="groupInviteCode" class="group-invite-code">——</span>
+              <button id="shareGroupCodeBtn" class="btn btn-ghost btn-sm">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                Dela
+              </button>
+            </div>
+            <p class="group-created-hint">Dela koden med dina medspelare. Starta sedan uppdraget.</p>
+          </div>
+
+          <!-- Gå med i grupp -->
+          <div class="group-join-row">
+            <input id="joinGroupInput" type="text" inputmode="text" autocapitalize="characters"
+              maxlength="6" placeholder="Ange gruppkod" class="form-input group-join-input">
+            <button id="joinGroupBtn" class="btn btn-secondary">Gå med</button>
+          </div>
+
+          <!-- Statusmeddelande -->
+          <div id="groupStatus" class="group-status hidden" aria-live="polite"></div>
+        </div>
+      </div>
+
+      <div class="intro-footer">
+        <button id="startAssignmentBtn" class="btn btn-primary btn-full btn-lg">
+          Starta uppdrag
+        </button>
+      </div>
+    </section>
+
+
+    <!-- ── VY: KARTA ───────────────────────────────── -->
+    <section id="viewMap" class="view view-map" data-name="map">
+
+      <canvas id="mapCanvas" class="map-canvas" aria-label="Karta"></canvas>
+
+      <div class="map-overlays">
+        <div class="map-top-bar">
+          <div id="mapAssignmentTitle" class="map-top-title"></div>
+          <div id="mapTimerBadge" class="map-timer-badge hidden"></div>
+        </div>
+
+        <div id="mapGpsStatus" class="map-gps-status map-gps-searching">
+          <span class="map-gps-dot"></span>
+          <span id="mapGpsText">Söker position…</span>
+        </div>
+
+        <div id="mapIntroCard" class="map-intro-card hidden">
+          <div id="mapIntroCardTitle" class="map-intro-title"></div>
+          <p id="mapIntroCardBody" class="map-intro-body"></p>
+          <button id="mapIntroCloseBtn" class="map-intro-close">Stäng ✕</button>
+        </div>
+
+        <!-- Grupp-badge på kartan -->
+        <div id="mapGroupBadge" class="map-group-badge hidden">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span id="mapGroupName"></span>
+        </div>
+
+        <div class="map-tools">
+          <button id="mapLocateBtn" class="map-tool-btn" aria-label="Min position">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+          </button>
+          <button id="mapZoomInBtn" class="map-tool-btn" aria-label="Zooma in">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+          <button id="mapZoomOutBtn" class="map-tool-btn" aria-label="Zooma ut">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom sheet: lista -->
+      <div id="listSheet" class="bottom-sheet list-sheet">
+        <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+        <div class="sheet-header">
+          <div class="sheet-header-left">
+            <button id="listSheetBackBtn" class="btn btn-ghost btn-sm">Karta</button>
+          </div>
+          <div class="sheet-header-center">
+            <div class="sheet-title" id="listSheetTitle">Platser</div>
+            <div class="sheet-subtitle" id="listSheetSubtitle"></div>
+          </div>
+          <div class="sheet-header-right">
+            <button id="listNotesBtn" class="btn btn-ghost btn-sm hidden">Anteckningar</button>
+          </div>
+        </div>
+        <div id="placesList" class="places-list"></div>
+      </div>
+
+      <!-- Bottom sheet: detalj -->
+      <div id="detailSheet" class="bottom-sheet detail-sheet">
+        <div class="sheet-handle-bar"><div class="sheet-handle"></div></div>
+        <div class="sheet-header detail-sheet-header">
+          <div class="sheet-header-left">
+            <button id="detailSheetBackBtn" class="btn btn-ghost btn-sm">Lista</button>
+          </div>
+          <div class="sheet-header-center">
+            <div class="sheet-title" id="detailSheetTitle">Plats</div>
+          </div>
+          <div class="sheet-header-right"></div>
+        </div>
+        <div id="detailSheetBody" class="detail-sheet-body"></div>
+      </div>
+
+      <!-- Topplista-overlay -->
+      <div id="leaderboardOverlay" class="leaderboard-overlay">
+        <div class="leaderboard-panel">
+          <div class="leaderboard-panel-head">
+            <div>
+              <div class="leaderboard-panel-title" id="leaderboardTitle">Topplista</div>
+              <div class="leaderboard-panel-sub" id="leaderboardInviteCode"></div>
+            </div>
+            <button id="leaderboardCloseBtn" class="btn btn-ghost btn-icon" aria-label="Stäng">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <div id="leaderboardBody" class="leaderboard-body">
+            <div class="leaderboard-empty">Hämtar...</div>
+          </div>
+          <div class="leaderboard-footer">
+            <button id="leaderboardRefreshBtn" class="btn btn-secondary btn-sm btn-full">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+              Uppdatera
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom navigation -->
+      <nav class="bottom-nav">
+        <button class="bottom-nav-item active" id="navMap">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 20l-5-2.5V5l5 2m0 15V7m0 13 6-3M9 7l6-3m0 17 5-2.5V5l-5 2m0 15V7"/></svg>
+          <span class="nav-label">Karta</span>
+        </button>
+        <button class="bottom-nav-item" id="navList">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <span class="nav-label">Lista</span>
+          <span id="navListBadge" class="nav-badge hidden"></span>
+        </button>
+        <!-- Topplista-knapp — visas bara i grupp/trail -->
+        <button class="bottom-nav-item hidden" id="navLeaderboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          <span class="nav-label">Topplista</span>
+        </button>
+        <button class="bottom-nav-item" id="navNotes">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
+          <span class="nav-label">Anteckningar</span>
+        </button>
+        <button class="bottom-nav-item nav-leave" id="navLeave">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span class="nav-label">Lämna</span>
+        </button>
+      </nav>
+    </section>
+
+
+    <!-- ── VY: ANTECKNINGAR ────────────────────────── -->
+    <section id="viewNotes" class="view view-notes" data-name="notes">
+      <header class="view-header view-header-back">
+        <button id="notesBackBtn" class="btn btn-ghost btn-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="view-header-title">Anteckningar</span>
+        <div style="width:38px"></div>
+      </header>
+
+      <div class="notes-body">
+        <div class="tabs" id="notesTabs">
+          <button class="tab active" data-tab="suspects">Misstänkta</button>
+          <button class="tab" data-tab="evidence">Bevis</button>
+          <button class="tab" data-tab="free">Fritt</button>
+        </div>
+        <div id="tabSuspects" class="tab-panel active">
+          <div id="suspectsList" class="suspects-list"></div>
+        </div>
+        <div id="tabEvidence" class="tab-panel">
+          <div id="evidenceList" class="evidence-list"></div>
+        </div>
+        <div id="tabFree" class="tab-panel">
+          <textarea id="notesTextarea" class="notes-textarea"
+            placeholder="Dina egna anteckningar…" rows="12"></textarea>
+          <button id="saveNotesBtn" class="btn btn-primary btn-full mt-1">Spara anteckningar</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ── VY: AVSLUTNING ─────────────────────────── -->
+    <section id="viewCompletion" class="view view-completion" data-name="completion">
+      <div class="completion-body">
+        <div class="completion-icon" aria-hidden="true">🎉</div>
+        <h2 class="completion-title">Uppdraget slutfört!</h2>
+        <p id="completionSummary" class="completion-summary"></p>
+
+        <!-- Slutresultat topplista (visas om grupp) -->
+        <div id="completionLeaderboard" class="completion-leaderboard hidden">
+          <div class="completion-leaderboard-title">Slutresultat</div>
+          <div id="completionLeaderboardBody" class="leaderboard-body"></div>
+        </div>
+
+        <button id="completionDoneBtn" class="btn btn-primary btn-full btn-lg mt-2">
+          Tillbaka till start
+        </button>
+      </div>
+    </section>
+
+  </div><!-- /app-shell -->
+
+  <!-- Dela-modalen för gruppkod -->
+  <dialog id="shareGroupModal" class="modal">
+    <div class="modal-inner">
+      <div class="modal-head">
+        <span class="modal-title">Bjud in till gruppen</span>
+        <button id="shareGroupCloseBtn" class="modal-close" aria-label="Stäng">✕</button>
+      </div>
+      <p class="modal-body-text">Dela den här koden med dina medspelare:</p>
+      <div class="share-code-display">
+        <span id="shareGroupCode" class="share-code">——</span>
+        <button id="copyGroupCodeBtn" class="btn btn-ghost btn-sm">Kopiera</button>
+      </div>
+      <button id="shareGroupNativeBtn" class="btn btn-primary btn-full mt-1">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+        Dela via telefonen
+      </button>
+    </div>
+  </dialog>
+
+  <script>
+    (function() {
+      var src = window.PAPLATS_CONFIG || {};
+      window.SPOTON_CONFIG = {
+        apiBaseUrl:   src.apiBaseUrl   || '/api/v1',
+        appBasePath:  '/app/pwa',
+        mediaBaseUrl: src.mediaBaseUrl || '',
+        map: {
+          tileUrlTemplate:     (src.map && src.map.tileUrlTemplate)     || 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          defaultZoom:         (src.map && src.map.defaultZoom)         || 15,
+          minZoom:             (src.map && src.map.minZoom)             || 3,
+          maxZoom:             (src.map && src.map.maxZoom)             || 18,
+          nearDistanceMeters:  (src.map && src.map.nearDistanceMeters)  || 120,
+          closeDistanceMeters: (src.map && src.map.closeDistanceMeters) || 40
+        }
+      };
+    })();
+  </script>
+  <script src="/app/pwa/config.js"></script>
+  <script src="/app/pwa/paplats.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/app/pwa/sw.js', { scope: '/app/pwa/' })
+          .catch(err => console.warn('SW registration failed:', err));
+      });
+    }
+  </script>
+</body>
+</html>

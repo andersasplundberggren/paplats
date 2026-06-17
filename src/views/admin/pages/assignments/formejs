@@ -1,0 +1,346 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= assignment ? 'Redigera uppdrag' : 'Nytt uppdrag' %></h1>
+  <div class="header-actions">
+    <a href="/admin/assignments" class="btn btn-ghost">← Alla uppdrag</a>
+    <% if (assignment) { %>
+      <a href="/admin/assignments/<%= assignment.id %>/places" class="btn btn-secondary">Platser →</a>
+    <% } %>
+  </div>
+</div>
+
+<form method="POST" action="<%= assignment ? '/admin/assignments/' + assignment.id : '/admin/assignments' %>">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <div class="content-columns">
+    <div>
+
+      <!-- Grundinfo -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Grundinformation</h2>
+
+        <div class="form-group">
+          <label>Titel <span class="required">*</span></label>
+          <input type="text" name="title" required maxlength="255"
+                 value="<%= (assignment && assignment.title) || '' %>" />
+        </div>
+
+        <div class="form-group">
+          <label>Beskrivning</label>
+
+          <div class="form-group">
+            <label>Intro titel <span class="hint">valfritt, visas när användaren startar uppdraget</span></label>
+            <input type="text" name="intro_title" maxlength="255"
+                   value="<%= (assignment && assignment.intro_title) || '' %>" />
+          </div>
+
+          <div class="form-group">
+            <label>Intro text <span class="hint">valfritt, introduktion och instruktioner för uppdraget</span></label>
+            <textarea name="intro_body" rows="5"><%= (assignment && assignment.intro_body) || '' %></textarea>
+          </div>
+
+          <textarea name="description" rows="3"><%= (assignment && assignment.description) || '' %></textarea>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Typ <span class="required">*</span></label>
+            <select name="type">
+              <option value="exploration" <%= !assignment || assignment.type === 'exploration' ? 'selected' : '' %>>
+                Utforskning, ren konsumtion
+              </option>
+              <option value="trail" <%= assignment && assignment.type === 'trail' ? 'selected' : '' %>>
+                Tipspromenad, frågor och poäng
+              </option>
+              <option value="mystery" <%= assignment && assignment.type === 'mystery' ? 'selected' : '' %>>
+                Gåta, mordgåta eller skattjakt
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Åtkomstkod <span class="required">*</span></label>
+            <input type="text" name="access_code" required maxlength="20"
+                   style="text-transform:uppercase"
+                   value="<%= (assignment && assignment.access_code) || '' %>"
+                   placeholder="T.ex. KARLSKOGA24" />
+            <p style="font-size:.73rem;color:var(--color-muted);margin-top:.25rem">
+              Koden användaren anger i appen. Unik, max 20 tecken.
+            </p>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Svårighetsgrad</label>
+            <select name="difficulty">
+              <option value="easy"   <%= assignment && assignment.difficulty === 'easy' ? 'selected' : '' %>>Lätt</option>
+              <option value="medium" <%= !assignment || assignment.difficulty === 'medium' ? 'selected' : '' %>>Medel</option>
+              <option value="hard"   <%= assignment && assignment.difficulty === 'hard' ? 'selected' : '' %>>Svår</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Uppskattad tid i minuter</label>
+            <input type="number" name="estimated_minutes" min="1"
+                   value="<%= (assignment && assignment.estimated_minutes) || '' %>"
+                   placeholder="T.ex. 60" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Upplåsning -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Upplåsning av platser</h2>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Ordning</label>
+            <select name="unlock_mode">
+              <option value="free" <%= !assignment || assignment.unlock_mode === 'free' ? 'selected' : '' %>>
+                Fri, platser besöks i valfri ordning
+              </option>
+              <option value="linear" <%= assignment && assignment.unlock_mode === 'linear' ? 'selected' : '' %>>
+                Linjär, stopp måste besökas i ordning
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Poängsättning</label>
+            <select name="grading_mode">
+              <option value="auto" <%= !assignment || assignment.grading_mode === 'auto' ? 'selected' : '' %>>
+                Auto, poäng visas direkt
+              </option>
+              <option value="collected" <%= assignment && assignment.grading_mode === 'collected' ? 'selected' : '' %>>
+                Insamlad, poäng visas i slutet
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Max antal deltagare <span class="hint">valfritt</span></label>
+          <input type="number" name="max_participants" min="1"
+                 value="<%= (assignment && assignment.max_participants) || '' %>"
+                 placeholder="Lämna tomt för obegränsat" />
+        </div>
+      </div>
+
+      <!-- Gallring -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Gallring av användarsessioner</h2>
+
+        <p style="font-size:.82rem;color:var(--color-muted);margin-bottom:1rem">
+          Detta påverkar bara användarsessioner, svar och anteckningar. Själva uppdraget ligger kvar.
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Gallringsläge</label>
+            <select name="session_retention_mode" id="session_retention_mode">
+              <option value="auto" <%= (!formData.session_retention_mode || formData.session_retention_mode === 'auto') ? 'selected' : '' %>>
+                Automatisk
+              </option>
+              <option value="manual" <%= formData.session_retention_mode === 'manual' ? 'selected' : '' %>>
+                Manuell
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group" id="session_retention_days_group">
+            <label>Gallra efter antal dagar</label>
+            <input type="number"
+                   name="session_retention_days"
+                   id="session_retention_days"
+                   min="1"
+                   step="1"
+                   value="<%= formData.session_retention_days || '2' %>"
+                   placeholder="T.ex. 2 eller 14" />
+            <p style="font-size:.73rem;color:var(--color-muted);margin-top:.25rem">
+              Gäller när gallringsläge är Automatisk.
+            </p>
+          </div>
+        </div>
+
+        <% if (assignment) { %>
+          <p style="font-size:.78rem;color:var(--color-muted);margin-top:.5rem">
+            Om du byter mellan Automatisk och Manuell behöver du spara uppdraget innan gallringsverktygen nedan uppdateras.
+          </p>
+        <% } %>
+      </div>
+
+      <!-- Aktiveringsfönster -->
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Aktiveringsfönster</h2>
+
+        <p style="font-size:.82rem;color:var(--color-muted);margin-bottom:1rem">
+          Lämna tomt för att uppdraget alltid ska vara tillgängligt när det är publicerat.
+        </p>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Startar <span class="hint">valfritt</span></label>
+            <input type="datetime-local" name="activation_starts_at"
+                   value="<%= (assignment && assignment.activation_starts_at) ? new Date(assignment.activation_starts_at).toISOString().slice(0,16) : '' %>" />
+          </div>
+
+          <div class="form-group">
+            <label>Slutar <span class="hint">valfritt</span></label>
+            <input type="datetime-local" name="activation_ends_at"
+                   value="<%= (assignment && assignment.activation_ends_at) ? new Date(assignment.activation_ends_at).toISOString().slice(0,16) : '' %>" />
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Höger kolumn -->
+    <div>
+      <div class="card" style="margin-bottom:1rem">
+        <h2 class="card-title">Status</h2>
+
+        <div class="form-group">
+          <select name="status">
+            <option value="draft" <%= !assignment || assignment.status !== 'published' ? 'selected' : '' %>>
+              Utkast, inte synligt i appen
+            </option>
+            <option value="published" <%= assignment && assignment.status === 'published' ? 'selected' : '' %>>
+              Publicerat, synligt med kod
+            </option>
+          </select>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%">
+          <%= assignment ? 'Spara ändringar' : 'Skapa uppdrag' %>
+        </button>
+
+        <% if (assignment) { %>
+          <button
+            type="submit"
+            formaction="/admin/assignments/<%= assignment.id %>/delete"
+            formmethod="POST"
+            class="btn btn-danger"
+            style="width:100%; margin-top:.5rem"
+            onclick="return confirm('Radera uppdraget och alla dess platser permanent?')">
+            Radera uppdrag
+          </button>
+        <% } %>
+      </div>
+
+      <% if (assignment) { %>
+        <div class="card" style="margin-bottom:1rem">
+          <h2 class="card-title">Manuell gallring</h2>
+
+          <% if (assignment.session_retention_mode === 'manual') { %>
+            <p style="font-size:.82rem;color:var(--color-muted);margin-bottom:1rem">
+              Använd detta när du vill rensa användarsessioner, svar och anteckningar för just detta uppdrag. Själva uppdraget påverkas inte.
+            </p>
+
+            <button
+              type="submit"
+              formaction="/admin/assignments/<%= assignment.id %>/cleanup/preview"
+              formmethod="POST"
+              formnovalidate
+              class="btn btn-secondary"
+              style="width:100%; margin-bottom:.5rem">
+              Visa vad som skulle raderas
+            </button>
+
+            <button
+              type="submit"
+              formaction="/admin/assignments/<%= assignment.id %>/cleanup/apply"
+              formmethod="POST"
+              formnovalidate
+              class="btn btn-danger"
+              style="width:100%"
+              onclick="return confirm('Vill du radera alla användarsessioner, svar och anteckningar för detta uppdrag? Själva uppdraget ligger kvar.')">
+              Kör manuell gallring nu
+            </button>
+
+            <% if (cleanupPreview) { %>
+              <div style="margin-top:1rem;padding:1rem;border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg)">
+                <div style="font-weight:700;margin-bottom:.75rem">Förhandsvisning</div>
+
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;font-size:.82rem;margin-bottom:.75rem">
+                  <div><strong>Sessioner:</strong> <%= cleanupPreview.candidateCount %></div>
+                  <div><strong>Svar:</strong> <%= cleanupPreview.progressCount %></div>
+                  <div><strong>Anteckningar:</strong> <%= cleanupPreview.notesCount %></div>
+                  <div><strong>Uppdrag:</strong> <%= cleanupPreview.assignment ? cleanupPreview.assignment.title : assignment.title %></div>
+                </div>
+
+                <% if (cleanupPreview.candidates && cleanupPreview.candidates.length > 0) { %>
+                  <div style="font-size:.78rem;color:var(--color-muted);margin-bottom:.4rem">
+                    De 10 första kandidaterna visas här:
+                  </div>
+
+                  <div style="max-height:220px;overflow:auto;border:1px solid var(--color-border);border-radius:8px;background:#fff">
+                    <% cleanupPreview.candidates.slice(0, 10).forEach(function (item) { %>
+                      <div style="padding:.55rem .7rem;border-bottom:1px solid var(--color-border);font-size:.78rem">
+                        <div><strong>Session ID:</strong> <%= item.sessionId %></div>
+                        <div><strong>Start:</strong> <%= item.startedAt %></div>
+                        <div><strong>Slut:</strong> <%= item.completedAt || 'Pågår eller saknas' %></div>
+                      </div>
+                    <% }) %>
+                  </div>
+
+                  <% if (cleanupPreview.candidates.length > 10) { %>
+                    <div style="font-size:.76rem;color:var(--color-muted);margin-top:.45rem">
+                      Totalt <%= cleanupPreview.candidates.length %> kandidater.
+                    </div>
+                  <% } %>
+                <% } else { %>
+                  <div style="font-size:.82rem;color:var(--color-muted)">
+                    Det finns inga användarsessioner att rensa för detta uppdrag.
+                  </div>
+                <% } %>
+              </div>
+            <% } %>
+
+          <% } else { %>
+            <p style="font-size:.82rem;color:var(--color-muted);margin:0">
+              Manuell gallring är inte aktiv för detta uppdrag. Välj gallringsläge Manuell och spara uppdraget först.
+            </p>
+          <% } %>
+        </div>
+      <% } %>
+
+      <% if (assignment) { %>
+      <div class="card">
+        <h2 class="card-title">Snabbval</h2>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          <a href="/admin/assignments/<%= assignment.id %>/places"
+             class="btn btn-secondary" style="text-align:center">Hantera platser</a>
+          <a href="/admin/editors/<%= assignment.id %>"
+             class="btn btn-ghost" style="text-align:center">Tilldela redaktörer</a>
+        </div>
+      </div>
+      <% } %>
+    </div>
+  </div>
+</form>
+
+<script>
+  (function () {
+    var modeField = document.getElementById('session_retention_mode');
+    var daysGroup = document.getElementById('session_retention_days_group');
+    var daysInput = document.getElementById('session_retention_days');
+
+    function updateRetentionVisibility() {
+      var isManual = modeField && modeField.value === 'manual';
+
+      if (!daysGroup || !daysInput) return;
+
+      daysGroup.style.opacity = isManual ? '0.55' : '1';
+      daysInput.disabled = isManual;
+    }
+
+    if (modeField) {
+      modeField.addEventListener('change', updateRetentionVisibility);
+      updateRetentionVisibility();
+    }
+  })();
+</script>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,345 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Resultat för <%= assignment.title %></h1>
+  <div class="header-actions">
+    <a href="/admin/assignments/<%= assignment.id %>/edit" class="btn btn-ghost">← Redigera uppdrag</a>
+    <a href="/admin/assignments/<%= assignment.id %>/places" class="btn btn-secondary">Platser →</a>
+    <a href="/admin/assignments/<%= assignment.id %>/live" class="btn btn-ghost">📡 Live</a>
+    <a href="/admin/assignments/<%= assignment.id %>/results/export" class="btn btn-ghost" download>
+      ⬇ Exportera CSV
+    </a>
+    <a href="/admin/assignments" class="btn btn-ghost">Alla uppdrag</a>
+  </div>
+</div>
+
+<div class="card" style="margin-bottom:1.5rem">
+  <h2 class="card-title">Vy</h2>
+  <div style="display:flex;gap:.75rem;flex-wrap:wrap">
+    <button type="button" id="detailViewBtn" class="btn btn-primary">Detaljvy</button>
+    <button type="button" id="summaryViewBtn" class="btn btn-secondary">Sammanfattning</button>
+  </div>
+  <p style="font-size:.82rem;color:var(--color-muted);margin-top:.75rem;margin-bottom:0">
+    Detaljvy visar allt rad för rad. Sammanfattning visar en mer kompakt rättningsvy.
+  </p>
+</div>
+
+<div class="content-columns" style="grid-template-columns:1fr 340px;gap:2rem;align-items:start">
+  <div>
+    <div id="detailView">
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Deltagarsessioner</h2>
+
+        <% if (!sessionItems || sessionItems.length === 0) { %>
+          <p style="color:var(--color-muted)">Det finns inga sparade resultat för detta uppdrag ännu.</p>
+        <% } else { %>
+          <% sessionItems.forEach(function (session) { %>
+            <div class="card" style="margin-bottom:1rem;padding:1rem;border:1px solid var(--color-border)">
+              <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap">
+                <div>
+                  <div style="font-weight:700;font-size:1rem">
+                    Session <%= session.id %>
+                  </div>
+                  <div style="font-size:.82rem;color:var(--color-muted);margin-top:.25rem">
+                    Start: <%= session.started_at %><br>
+                    Slut: <%= session.completed_at || 'Pågår eller saknas' %>
+                  </div>
+                  <% if (session.nickname || session.contact) { %>
+                    <div style="font-size:.82rem;color:var(--color-muted);margin-top:.35rem">
+                      <% if (session.nickname) { %>Namn: <%= session.nickname %><br><% } %>
+                      <% if (session.contact) { %>Kontakt: <%= session.contact %><% } %>
+                    </div>
+                  <% } %>
+                </div>
+
+                <div style="text-align:right;font-size:.82rem">
+                  <div><strong>Poäng:</strong> <%= session.total_score || 0 %></div>
+                  <div><strong>Svarsrader:</strong> <%= session.progress_count || 0 %></div>
+                  <div><strong>Rätta svar:</strong> <%= session.correct_count || 0 %></div>
+                </div>
+              </div>
+
+              <% if (session.progress && session.progress.length > 0) { %>
+                <div style="margin-top:1rem;overflow:auto">
+                  <table style="width:100%;border-collapse:collapse;font-size:.83rem">
+                    <thead>
+                      <tr style="border-bottom:1px solid var(--color-border)">
+                        <th style="text-align:left;padding:.5rem">Tid</th>
+                        <th style="text-align:left;padding:.5rem">Plats</th>
+                        <th style="text-align:left;padding:.5rem">Block</th>
+                        <th style="text-align:left;padding:.5rem">Svar</th>
+                        <th style="text-align:left;padding:.5rem">Resultat</th>
+                        <th style="text-align:left;padding:.5rem">Poäng</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <% session.progress.forEach(function (item) { %>
+                        <tr style="border-bottom:1px solid var(--color-border)">
+                          <td style="padding:.5rem"><%= item.visited_at %></td>
+                          <td style="padding:.5rem"><%= item.place_title || 'Okänd plats' %></td>
+                          <td style="padding:.5rem">
+                            <% if (item.block_title) { %>
+                              <%= item.block_title %>
+                            <% } else if (item.block_body) { %>
+                              <%= item.block_body %>
+                            <% } else if (item.block_type) { %>
+                              <%= item.block_type %>
+                            <% } else { %>
+                              Platsbesök
+                            <% } %>
+                          </td>
+                          <td style="padding:.5rem">
+                            <% if (item.chosen_option) { %>
+                              Valde <%= String(item.chosen_option).toUpperCase() %>
+                            <% } else if (item.solution_text) { %>
+                              <%= item.solution_text %>
+                            <% } else { %>
+                              Registrerat besök
+                            <% } %>
+                          </td>
+                          <td style="padding:.5rem">
+                            <% if (item.is_correct === 1 || item.is_correct === true) { %>
+                              Rätt
+                            <% } else if (item.is_correct === 0 || item.is_correct === false) { %>
+                              Fel
+                            <% } else { %>
+                              Ej bedömt
+                            <% } %>
+                          </td>
+                          <td style="padding:.5rem"><%= item.points_earned || 0 %></td>
+                        </tr>
+                      <% }) %>
+                    </tbody>
+                  </table>
+                </div>
+              <% } else { %>
+                <div style="margin-top:1rem;font-size:.82rem;color:var(--color-muted)">
+                  Inga registrerade svar eller besök i denna session.
+                </div>
+              <% } %>
+
+              <% if (session.note) { %>
+                <div style="margin-top:1rem;padding:.75rem;border-radius:8px;background:var(--color-bg);border:1px solid var(--color-border)">
+                  <div style="font-weight:700;margin-bottom:.35rem">Anteckningar</div>
+                  <div style="white-space:pre-wrap;font-size:.83rem"><%= session.note %></div>
+                </div>
+              <% } %>
+            </div>
+          <% }) %>
+        <% } %>
+      </div>
+    </div>
+
+    <div id="summaryView" style="display:none">
+      <div class="card" style="margin-bottom:1.5rem">
+        <h2 class="card-title">Sammanfattning</h2>
+
+        <% if (!sessionItems || sessionItems.length === 0) { %>
+          <p style="color:var(--color-muted)">Det finns inga sparade resultat för detta uppdrag ännu.</p>
+        <% } else { %>
+
+          <div style="margin-bottom:1rem;padding:1rem;border:1px solid var(--color-border);border-radius:10px;background:var(--color-bg)">
+            <div style="font-weight:700;margin-bottom:.75rem">Välj kolumner</div>
+
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.6rem;font-size:.84rem">
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" class="summary-column-toggle" data-column="start" checked>
+                Visa starttid
+              </label>
+
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" class="summary-column-toggle" data-column="end" checked>
+                Visa sluttid
+              </label>
+
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" class="summary-column-toggle" data-column="answers" checked>
+                Visa antal svar
+              </label>
+
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" class="summary-column-toggle" data-column="correct" checked>
+                Visa antal rätt
+              </label>
+
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" class="summary-column-toggle" data-column="score" checked>
+                Visa poäng
+              </label>
+
+              <label style="display:flex;align-items:center;gap:.5rem">
+                <input type="checkbox" class="summary-column-toggle" data-column="answersummary" checked>
+                Visa kort sammanställning
+              </label>
+            </div>
+          </div>
+
+          <div style="overflow:auto">
+            <table style="width:100%;border-collapse:collapse;font-size:.84rem">
+              <thead>
+                <tr style="border-bottom:1px solid var(--color-border)">
+                  <th style="text-align:left;padding:.6rem">Session</th>
+                  <th class="summary-col summary-col-start" style="text-align:left;padding:.6rem">Start</th>
+                  <th class="summary-col summary-col-end" style="text-align:left;padding:.6rem">Slut</th>
+                  <th class="summary-col summary-col-answers" style="text-align:left;padding:.6rem">Svar</th>
+                  <th class="summary-col summary-col-correct" style="text-align:left;padding:.6rem">Rätt</th>
+                  <th class="summary-col summary-col-score" style="text-align:left;padding:.6rem">Poäng</th>
+                  <th class="summary-col summary-col-answersummary" style="text-align:left;padding:.6rem">Kort sammanställning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% sessionItems.forEach(function (session) { %>
+                  <tr style="border-bottom:1px solid var(--color-border);vertical-align:top">
+                    <td style="padding:.6rem">
+                      <div style="font-weight:700">Session <%= session.id %></div>
+                      <% if (session.nickname) { %>
+                        <div style="font-size:.78rem;color:var(--color-muted)"><%= session.nickname %></div>
+                      <% } %>
+                    </td>
+
+                    <td class="summary-col summary-col-start" style="padding:.6rem"><%= session.started_at %></td>
+                    <td class="summary-col summary-col-end" style="padding:.6rem"><%= session.completed_at || 'Pågår' %></td>
+                    <td class="summary-col summary-col-answers" style="padding:.6rem"><%= session.progress_count || 0 %></td>
+                    <td class="summary-col summary-col-correct" style="padding:.6rem"><%= session.correct_count || 0 %></td>
+                    <td class="summary-col summary-col-score" style="padding:.6rem"><strong><%= session.total_score || 0 %></strong></td>
+
+                    <td class="summary-col summary-col-answersummary" style="padding:.6rem;min-width:260px">
+                      <%
+                        var compactItems = [];
+                        var questionIndex = 0;
+                        var solutionIndex = 0;
+
+                        (session.progress || []).forEach(function (item) {
+                          var label = 'Besök';
+
+                          if (item.block_type === 'question') {
+                            questionIndex += 1;
+                            label = 'F' + questionIndex;
+                          } else if (item.block_type === 'solution') {
+                            solutionIndex += 1;
+                            label = 'L' + solutionIndex;
+                          } else if (item.block_type === 'clue') {
+                            label = 'Ledtråd';
+                          } else if (!item.block_type) {
+                            label = 'Besök';
+                          } else {
+                            label = item.block_type;
+                          }
+
+                          var answerText = 'Besök';
+                          if (item.chosen_option) {
+                            answerText = String(item.chosen_option).toUpperCase();
+                          } else if (item.solution_text) {
+                            answerText = item.solution_text;
+                          }
+
+                          compactItems.push(label + ': ' + answerText);
+                        });
+                      %>
+
+                      <% if (compactItems.length > 0) { %>
+                        <div style="line-height:1.45">
+                          <%= compactItems.join(' | ') %>
+                        </div>
+                      <% } else { %>
+                        <span style="color:var(--color-muted)">Inga svar</span>
+                      <% } %>
+                    </td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="card" style="margin-bottom:1rem">
+      <h2 class="card-title">Översikt</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;font-size:.9rem">
+        <div style="padding:.85rem;border:1px solid var(--color-border);border-radius:10px">
+          <div style="color:var(--color-muted);font-size:.75rem">Sessioner</div>
+          <div style="font-size:1.4rem;font-weight:700"><%= summary.sessionCount %></div>
+        </div>
+        <div style="padding:.85rem;border:1px solid var(--color-border);border-radius:10px">
+          <div style="color:var(--color-muted);font-size:.75rem">Svarsrader</div>
+          <div style="font-size:1.4rem;font-weight:700"><%= summary.totalAnswers %></div>
+        </div>
+        <div style="padding:.85rem;border:1px solid var(--color-border);border-radius:10px">
+          <div style="color:var(--color-muted);font-size:.75rem">Avslutade</div>
+          <div style="font-size:1.4rem;font-weight:700"><%= summary.completedCount %></div>
+        </div>
+        <div style="padding:.85rem;border:1px solid var(--color-border);border-radius:10px">
+          <div style="color:var(--color-muted);font-size:.75rem">Aktiva</div>
+          <div style="font-size:1.4rem;font-weight:700"><%= summary.activeCount %></div>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem;padding:.85rem;border:1px solid var(--color-border);border-radius:10px">
+        <div style="color:var(--color-muted);font-size:.75rem">Total poängsumma</div>
+        <div style="font-size:1.6rem;font-weight:700"><%= summary.totalScore %></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 class="card-title">Tips</h2>
+      <p style="font-size:.82rem;color:var(--color-muted);margin:0 0 .75rem 0">
+        För uppdrag som används återkommande kan du sätta gallringsläge till Manuell, granska resultaten här och sedan rensa användarsessionerna när gruppen är klar.
+      </p>
+      <a href="/admin/assignments/<%= assignment.id %>/edit" class="btn btn-secondary" style="width:100%;text-align:center">
+        Till gallringsinställningar
+      </a>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var detailBtn = document.getElementById('detailViewBtn');
+    var summaryBtn = document.getElementById('summaryViewBtn');
+    var detailView = document.getElementById('detailView');
+    var summaryView = document.getElementById('summaryView');
+
+    function showDetail() {
+      detailView.style.display = '';
+      summaryView.style.display = 'none';
+      detailBtn.className = 'btn btn-primary';
+      summaryBtn.className = 'btn btn-secondary';
+    }
+
+    function showSummary() {
+      detailView.style.display = 'none';
+      summaryView.style.display = '';
+      detailBtn.className = 'btn btn-secondary';
+      summaryBtn.className = 'btn btn-primary';
+    }
+
+    if (detailBtn) {
+      detailBtn.addEventListener('click', showDetail);
+    }
+
+    if (summaryBtn) {
+      summaryBtn.addEventListener('click', showSummary);
+    }
+
+    function applySummaryColumnVisibility(columnName, isVisible) {
+      var cells = document.querySelectorAll('.summary-col-' + columnName);
+      cells.forEach(function (cell) {
+        cell.style.display = isVisible ? '' : 'none';
+      });
+    }
+
+    var toggles = document.querySelectorAll('.summary-column-toggle');
+    toggles.forEach(function (toggle) {
+      applySummaryColumnVisibility(toggle.getAttribute('data-column'), toggle.checked);
+
+      toggle.addEventListener('change', function () {
+        applySummaryColumnVisibility(toggle.getAttribute('data-column'), toggle.checked);
+      });
+    });
+  })();
+</script>
+
+<%- include('../../partials/footer') %>

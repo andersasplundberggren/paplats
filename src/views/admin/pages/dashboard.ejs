@@ -1,0 +1,39 @@
+<%- include('../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <% if (locals.adminName) { %>
+    <p class="text-muted">Inloggad som <%= adminName %></p>
+  <% } %>
+</div>
+
+<div class="stats-grid">
+  <div class="stat-card" style="cursor:default">
+    <div class="stat-number"><%= stats.published %></div>
+    <div class="stat-label">Publicerade platser</div>
+  </div>
+  <div class="stat-card" style="cursor:default">
+    <div class="stat-number"><%= stats.draft %></div>
+    <div class="stat-label">Utkast</div>
+  </div>
+  <div class="stat-card" style="cursor:default">
+    <div class="stat-number"><%= stats.images %></div>
+    <div class="stat-label">Bilder</div>
+  </div>
+  <div class="stat-card" style="cursor:default">
+    <div class="stat-number"><%= stats.videos %></div>
+    <div class="stat-label">Videor</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:2rem">
+  <h2 class="card-title">Snabbval</h2>
+  <div class="action-row">
+    <a href="/admin/assignments/new" class="btn btn-primary">+ Nytt uppdrag</a>
+    <a href="/admin/media/upload"    class="btn btn-secondary">+ Ladda upp media</a>
+    <a href="/admin/assignments"     class="btn btn-ghost">Alla uppdrag</a>
+    <a href="/admin/events"          class="btn btn-ghost">Gruppsessioner</a>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

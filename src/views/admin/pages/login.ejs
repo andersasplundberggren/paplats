@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login — GeoExp Admin</title>
+  <link rel="stylesheet" href="/static/admin/css/admin.css" />
+</head>
+<body class="login-body">
+  <div class="login-card">
+    <h1 class="login-title">GeoExp Admin</h1>
+
+    <% if (locals.error && error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/admin/login" class="login-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          autocomplete="email"
+          required
+          autofocus
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          autocomplete="current-password"
+          required
+        />
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full">Log in</button>
+    </form>
+  </div>
+  <script src="/static/admin/js/admin.js"></script>
+</body>
+</html>

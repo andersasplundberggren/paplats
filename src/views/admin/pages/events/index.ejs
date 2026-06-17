@@ -1,0 +1,78 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Gruppsessioner</h1>
+  <p class="text-muted">Visar aktiva och nyligen avslutade grupper (senaste 48 timmarna)</p>
+</div>
+
+<% if (success) { %>
+  <div class="alert alert-success"><%= success %></div>
+<% } %>
+<% if (error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<% if (events.length === 0) { %>
+  <div class="card" style="text-align:center;padding:2.5rem">
+    <p style="color:var(--color-muted)">Inga gruppsessioner de senaste 48 timmarna.</p>
+    <p style="color:var(--color-muted);font-size:.85rem;margin-top:.5rem">
+      Grupper skapas av spelare i PWA:n när de kör tipspromenader.
+    </p>
+  </div>
+<% } else { %>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table style="width:100%;border-collapse:collapse">
+      <thead>
+        <tr style="background:var(--color-bg-alt,#f1f5f9);border-bottom:1px solid var(--color-border)">
+          <th style="padding:.75rem 1rem;text-align:left;font-size:.8rem;color:var(--color-muted);font-weight:600">Grupp</th>
+          <th style="padding:.75rem 1rem;text-align:left;font-size:.8rem;color:var(--color-muted);font-weight:600">Uppdrag</th>
+          <th style="padding:.75rem 1rem;text-align:center;font-size:.8rem;color:var(--color-muted);font-weight:600">Deltagare</th>
+          <th style="padding:.75rem 1rem;text-align:left;font-size:.8rem;color:var(--color-muted);font-weight:600">Inbjudningskod</th>
+          <th style="padding:.75rem 1rem;text-align:left;font-size:.8rem;color:var(--color-muted);font-weight:600">Status</th>
+          <th style="padding:.75rem 1rem;text-align:left;font-size:.8rem;color:var(--color-muted);font-weight:600">Skapad</th>
+          <th style="padding:.75rem 1rem;text-align:left;font-size:.8rem;color:var(--color-muted);font-weight:600">Går ut</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% events.forEach((event, i) => { %>
+        <tr style="border-bottom:1px solid var(--color-border);background:<%= i % 2 === 0 ? 'var(--color-bg,#fff)' : 'var(--color-bg-alt,#f8fafc)' %>">
+          <td style="padding:.75rem 1rem;font-weight:600;color:var(--color-text)"><%= event.name %></td>
+          <td style="padding:.75rem 1rem;color:var(--color-muted);font-size:.88rem">
+            <%= event.assignment_title %>
+            <span style="font-size:.75rem;color:var(--color-muted);opacity:.6">(<%= event.assignment_code %>)</span>
+          </td>
+          <td style="padding:.75rem 1rem;text-align:center;font-weight:600;color:var(--color-text)"><%= event.member_count %></td>
+          <td style="padding:.75rem 1rem">
+            <code style="background:var(--color-bg-alt,#f1f5f9);padding:3px 8px;border-radius:5px;font-size:.9rem;letter-spacing:.08em;font-weight:700"><%= event.invite_code %></code>
+          </td>
+          <td style="padding:.75rem 1rem">
+            <% if (event.is_active) { %>
+              <span style="display:inline-flex;align-items:center;gap:5px;background:#d1fae5;color:#065f46;padding:3px 9px;border-radius:999px;font-size:.75rem;font-weight:600">
+                <span style="width:6px;height:6px;border-radius:50%;background:#10b981"></span>
+                Aktiv
+              </span>
+            <% } else { %>
+              <span style="display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;color:#64748b;padding:3px 9px;border-radius:999px;font-size:.75rem;font-weight:600">
+                Avslutad
+              </span>
+            <% } %>
+          </td>
+          <td style="padding:.75rem 1rem;font-size:.82rem;color:var(--color-muted)">
+            <%= new Date(event.created_at).toLocaleString('sv-SE', { dateStyle:'short', timeStyle:'short' }) %>
+          </td>
+          <td style="padding:.75rem 1rem;font-size:.82rem;color:<%= event.is_active ? 'var(--color-muted)' : '#94a3b8' %>">
+            <%= event.expires_at.toLocaleString('sv-SE', { dateStyle:'short', timeStyle:'short' }) %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="margin-top:1rem;font-size:.8rem;color:var(--color-muted)">
+    Totalt <%= events.length %> grupp<%= events.length === 1 ? '' : 'er' %> de senaste 48 timmarna.
+    Grupper är aktiva i 24 timmar från att de skapas och kan ha max 15 deltagare.
+  </p>
+<% } %>
+
+<%- include('../../partials/footer') %>

@@ -1,0 +1,1052 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<style>
+  .block-card { background:var(--color-bg,#f8fafc);border:1px solid var(--color-border,#e2e8f0);border-radius:10px;padding:1.25rem;margin-bottom:1rem; }
+  .block-type-badge { display:inline-block;padding:.2rem .6rem;border-radius:5px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em; }
+  .type-text      { background:#e0f2fe;color:#0369a1; }
+  .type-image     { background:#dcfce7;color:#15803d; }
+  .type-video     { background:#fef9c3;color:#854d0e; }
+  .type-audio     { background:#f3e8ff;color:#7e22ce; }
+  .type-ar_overlay{ background:#fce7f3;color:#9d174d; }
+  .type-question  { background:#ffedd5;color:#c2410c; }
+  .type-clue      { background:#f1f5f9;color:#475569; }
+  .type-solution  { background:#d1fae5;color:#065f46; }
+  .type-link      { background:#ede9fe;color:#5b21b6; }
+  .type-witness   { background:#fef3c7;color:#92400e; }
+  .type-evidence  { background:#e0e7ff;color:#3730a3; }
+  .type-suspect   { background:#fce7f3;color:#9d174d; }
+  .media-thumb { width:60px;height:45px;object-fit:cover;border-radius:5px;border:1px solid var(--color-border); }
+  .publish-warning { background:#fef3c7;border:1px solid #fcd34d;color:#92400e;border-radius:8px;padding:.6rem .85rem;font-size:.8rem;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem }
+  /* ── Drag & Drop ── */
+  .drag-handle { cursor:grab;color:#94a3b8;font-size:1.15rem;margin-right:.4rem;flex-shrink:0;user-select:none;padding:.1rem .3rem;border-radius:4px;transition:color .12s,background .12s }
+  .drag-handle:hover { color:#475569;background:#f1f5f9 }
+  .drag-handle:active { cursor:grabbing }
+  .sortable-ghost { opacity:.28;background:#eff6ff !important;border:2px dashed #93c5fd !important }
+  .sortable-drag  { box-shadow:0 8px 24px rgba(0,0,0,.18) }
+  #reorder-bar { display:none;align-items:center;gap:.75rem;padding:.6rem 1rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;margin-bottom:1rem }
+  .sort-order-badge { font-size:.74rem;color:var(--color-muted);margin-left:.15rem }
+</style>
+
+<div class="page-header">
+  <h1>Innehåll — <%= place.title %></h1>
+  <div class="header-actions">
+    <a href="/admin/assignments/<%= place.assignment_id %>/places"
+       class="btn btn-ghost" title="Tillbaka till platslistan för uppdraget">
+      ← <%= place.assignment_title %>
+    </a>
+    <a href="/admin/places/<%= place.id %>/edit"
+       class="btn btn-ghost" title="Redigera platsens titel, koordinater och inställningar">
+      Redigera plats
+    </a>
+    <% if (assignments && assignments.length > 0) { %>
+    <button type="button" class="btn btn-ghost btn-sm"
+            onclick="openCopyModal()"
+            title="Kopiera den här platsen med allt innehåll till ett annat uppdrag">
+      Kopiera plats →
+    </button>
+    <% } %>
+    <div style="width:1px;height:1.4rem;background:var(--color-border);margin:0 .1rem"></div>
+    <form method="POST" action="/admin/places/<%= place.id %>/delete" style="display:inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <button type="submit" class="btn btn-danger btn-sm"
+        title="Raderar platsen och allt dess innehåll permanent — kan inte ångras"
+        onclick="return confirm('Radera platsen \'<%= place.title %>\' och allt dess innehåll permanent?')">
+        Radera plats
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: kopiera plats till annat uppdrag -->
+<dialog id="copy-modal" style="border:none;border-radius:16px;padding:2rem;width:min(440px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.25)">
+  <h2 style="font-size:1.1rem;font-weight:700;margin-bottom:.5rem">Kopiera plats</h2>
+  <p style="font-size:.82rem;color:var(--color-muted);margin-bottom:1.25rem">
+    Platsen "<strong><%= place.title %></strong>" och alla dess innehållsblock kopieras till valt uppdrag.
+    Mediafiler återanvänds och kopieras inte.
+  </p>
+  <form method="POST" action="/admin/places/<%= place.id %>/copy">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <div class="form-group" style="margin-bottom:1.25rem">
+      <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.4rem">Välj måluppdrag</label>
+      <select name="target_assignment_id" required style="width:100%;padding:.5rem .75rem;border:1px solid var(--color-border);border-radius:6px;font-size:.88rem">
+        <option value="">— Välj uppdrag —</option>
+        <% assignments.forEach(a => { %>
+          <option value="<%= a.id %>"><%= a.title %> (<%= a.access_code %>)</option>
+        <% }) %>
+      </select>
+    </div>
+    <div style="display:flex;gap:.75rem;justify-content:flex-end">
+      <button type="button" class="btn btn-ghost" onclick="closeCopyModal()">Avbryt</button>
+      <button type="submit" class="btn btn-primary">Kopiera hit</button>
+    </div>
+  </form>
+</dialog>
+
+<% if (success) { %>
+  <div class="alert alert-success"><%= success %></div>
+<% } %>
+<% if (error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<% const isPublished = place.status === 'published'; %>
+
+<div class="content-columns" style="grid-template-columns:1fr 360px;gap:2rem;align-items:start">
+
+  <!-- Befintliga block -->
+  <div>
+    <!-- Reorder-bar: visas bara efter drag ─────────────────────── -->
+    <div id="reorder-bar">
+      <span style="font-size:.85rem;color:#1d4ed8;flex:1">Ny ordning — klicka Spara för att bekräfta</span>
+      <button type="button" class="btn btn-primary btn-sm" id="save-order-btn" onclick="saveBlockOrder()">Spara ordning</button>
+      <button type="button" class="btn btn-ghost btn-sm" onclick="cancelReorder()">Ångra</button>
+    </div>
+
+    <% if (blocks.length === 0) { %>
+      <div class="card" style="text-align:center;padding:2.5rem">
+        <p style="color:var(--color-muted)">Inga innehållsblock ännu. Lägg till från panelen till höger.</p>
+      </div>
+    <% } else { %>
+      <% blocks.forEach(block => { %>
+      <div class="block-card" data-block-id="<%= block.id %>">
+        <div style="display:flex;align-items:flex-start;gap:1rem">
+          <!-- Draghandtag -->
+          <span class="drag-handle" title="Dra för att ändra ordning">⠿</span>
+
+          <!-- Ikon/förhandsgranskning -->
+          <div style="flex-shrink:0">
+            <% if (block.media_type === 'image' && block.stored_path) { %>
+              <img src="<%= mediaBaseUrl %>/<%= block.stored_path %>" class="media-thumb" />
+            <% } else if (block.block_type === 'witness' && block.witness_image_path) { %>
+              <img src="<%= mediaBaseUrl %>/<%= block.witness_image_path %>" class="media-thumb" />
+            <% } else if (block.block_type === 'suspect' && block.suspect_image_path) { %>
+              <img src="<%= mediaBaseUrl %>/<%= block.suspect_image_path %>" class="media-thumb" />
+            <% } else if (block.media_type === 'video') { %>
+              <div class="media-thumb" style="background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🎬</div>
+            <% } else if (block.media_type === 'audio') { %>
+              <div class="media-thumb" style="background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:1.5rem">🔊</div>
+            <% } else { %>
+              <div class="media-thumb" style="background:var(--color-bg-alt,#e2e8f0);display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                <% if (block.block_type === 'text') { %>📝
+                <% } else if (block.block_type === 'question') { %>❓
+                <% } else if (block.block_type === 'clue') { %>🔍
+                <% } else if (block.block_type === 'witness') { %>👤
+                <% } else if (block.block_type === 'evidence') { %>📁
+                <% } else if (block.block_type === 'suspect') { %>🕵️
+                <% } else { %>✅<% } %>
+              </div>
+            <% } %>
+          </div>
+
+          <!-- Info -->
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem;flex-wrap:wrap">
+              <%
+                const blockTypeNames = {
+                  text: 'Text', image: 'Bild', video: 'Video', audio: 'Ljud',
+                  ar_overlay: 'AR-overlay', question: 'Fråga', clue: 'Ledtråd',
+                  solution: 'Lösning', link: 'Länk',
+                  witness: 'Vittne', evidence: 'Bevis', suspect: 'Misstänkt'
+                };
+              %>
+              <span class="block-type-badge type-<%= block.block_type %>"
+                    title="Blocktyp: <%= block.block_type %>">
+                <%= blockTypeNames[block.block_type] || block.block_type %>
+              </span>
+              <span class="sort-order-badge" style="font-size:.75rem;color:var(--color-muted)">#<%= block.sort_order + 1 %></span>
+              <% if (block.block_type === 'clue' && block.is_hidden) { %>
+                <span style="font-size:.72rem;background:#fef3c7;color:#92400e;padding:.1rem .4rem;border-radius:4px"
+                      title="Dold ledtråd — visas bara när användaren aktivt begär den">Dold</span>
+              <% } %>
+              <% if (block.block_type === 'witness' && block.witness_reliability) { %>
+                <%
+                  const reliabilityLabel = { reliable: '✅ Pålitlig', uncertain: '⚠️ Osäker', suspicious: '🔴 Misstänksam' };
+                %>
+                <span style="font-size:.72rem;background:#f1f5f9;color:#475569;padding:.1rem .4rem;border-radius:4px">
+                  <%= reliabilityLabel[block.witness_reliability] || block.witness_reliability %>
+                </span>
+              <% } %>
+              <% if (block.block_type === 'evidence' && block.evidence_label) { %>
+                <span style="font-size:.72rem;background:#e0e7ff;color:#3730a3;padding:.1rem .4rem;border-radius:4px"><%= block.evidence_label %></span>
+              <% } %>
+            </div>
+
+            <%# Vittne: visa namn och roll %>
+            <% if (block.block_type === 'witness') { %>
+              <% if (block.witness_name) { %><strong style="font-size:.9rem"><%= block.witness_name %></strong><% } %>
+              <% if (block.witness_role) { %><span style="font-size:.8rem;color:var(--color-muted)"> — <%= block.witness_role %></span><% } %>
+              <% if (block.witness_statement) { %><p style="font-size:.82rem;color:var(--color-muted);margin:.25rem 0 0;white-space:pre-line"><%= block.witness_statement.substring(0,120) %><%= block.witness_statement.length > 120 ? '…' : '' %></p><% } %>
+            <%# Bevis: visa label och titel %>
+            <% } else if (block.block_type === 'evidence') { %>
+              <% if (block.title) { %><strong style="font-size:.9rem"><%= block.title %></strong><% } %>
+              <% if (block.body) { %><p style="font-size:.82rem;color:var(--color-muted);margin:.25rem 0 0;white-space:pre-line"><%= block.body.substring(0,120) %><%= block.body.length > 120 ? '…' : '' %></p><% } %>
+            <%# Misstänkt: visa namn och roll %>
+            <% } else if (block.block_type === 'suspect') { %>
+              <% if (block.suspect_name) { %><strong style="font-size:.9rem"><%= block.suspect_name %></strong><% } %>
+              <% if (block.suspect_role) { %><span style="font-size:.8rem;color:var(--color-muted)"> — <%= block.suspect_role %></span><% } %>
+              <% if (block.suspect_motive) { %><p style="font-size:.82rem;color:var(--color-muted);margin:.25rem 0 0;white-space:pre-line"><%= block.suspect_motive.substring(0,120) %><%= block.suspect_motive.length > 120 ? '…' : '' %></p><% } %>
+            <%# Övriga block: standardvisning %>
+            <% } else { %>
+              <% if (block.title) { %><strong style="font-size:.9rem"><%= block.title %></strong><% } %>
+              <% if (block.body) { %><p style="font-size:.82rem;color:var(--color-muted);margin:.25rem 0 0;white-space:pre-line"><%= block.body.substring(0,120) %><%= block.body.length > 120 ? '…' : '' %></p><% } %>
+              <% if (block.original_filename) { %><p style="font-size:.78rem;color:var(--color-muted);margin:.2rem 0 0"><%= block.original_filename %></p><% } %>
+              <% if (block.block_type === 'question') { %>
+                <div style="font-size:.78rem;color:var(--color-muted);margin-top:.3rem">
+                  A: <%= block.option_a %> &nbsp; B: <%= block.option_b %>
+                  <% if (block.option_c) { %>&nbsp; C: <%= block.option_c %><% } %>
+                  <% if (block.option_d) { %>&nbsp; D: <%= block.option_d %><% } %>
+                  <br><span style="color:green">Rätt: <%= block.correct_option && block.correct_option.toUpperCase() %> &nbsp; <%= block.points %> poäng</span>
+                </div>
+              <% } %>
+            <% } %>
+          </div>
+
+          <!-- Redigera / Kopiera / Ta bort -->
+          <div style="display:flex;gap:.35rem;flex-shrink:0;align-items:flex-start">
+            <button type="button" class="btn btn-ghost btn-sm"
+              title="Redigera innehållet i det här blocket"
+              onclick="toggleEditForm(<%= block.id %>, <%= isPublished %>)">Redigera</button>
+            <form method="POST" action="/admin/content/<%= place.id %>/blocks/<%= block.id %>/copy">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-ghost btn-sm"
+                title="Skapa en kopia av det här blocket direkt under originalet">Kopiera</button>
+            </form>
+            <form method="POST" action="/admin/content/<%= place.id %>/blocks/<%= block.id %>/delete">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-danger btn-sm"
+                title="Radera det här blocket permanent — kan inte ångras"
+                onclick="return confirm('Radera det här blocket permanent?')">Radera</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Inline-redigeringsformulär (dolt som standard) -->
+        <div id="edit-<%= block.id %>" style="display:none;margin-top:1rem;padding-top:1rem;border-top:1px solid var(--color-border)">
+
+          <%# Varning om platsen är publicerad %>
+          <% if (isPublished) { %>
+          <div class="publish-warning" id="edit-warn-<%= block.id %>">
+            ⚠️ <strong>OBS — publicerat uppdrag.</strong> Ändringar syns omedelbart för aktiva användare. Kontrollera noga innan du sparar.
+          </div>
+          <% } %>
+
+          <form method="POST" action="/admin/content/<%= place.id %>/blocks/<%= block.id %>">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+            <div class="form-row">
+              <div class="form-group" style="flex:0 0 80px">
+                <label style="font-size:.75rem">Ordning</label>
+                <input type="number" name="sort_order" value="<%= block.sort_order %>"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <% if (block.block_type !== 'question' && block.block_type !== 'solution') { %>
+              <div class="form-group" style="flex:1">
+                <label style="font-size:.75rem">Titel</label>
+                <input type="text" name="title" value="<%= block.title || '' %>"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <% } else { %>
+                <input type="hidden" name="title" value="<%= block.title || '' %>" />
+              <% } %>
+            </div>
+
+            <%# TEXT och CLUE: synlig textarea %>
+            <% if (block.block_type === 'text' || block.block_type === 'clue') { %>
+            <div class="form-group">
+              <label style="font-size:.75rem">Text</label>
+              <textarea name="body" rows="3"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.body || '' %></textarea>
+            </div>
+            <% if (block.block_type === 'clue') { %>
+            <div class="form-group">
+              <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer">
+                <input type="checkbox" name="is_hidden" value="1" <%= block.is_hidden ? 'checked' : '' %> />
+                Dold — visas bara när användaren begär ledtråd
+              </label>
+            </div>
+            <% } %>
+            <% } else if (block.block_type !== 'witness' && block.block_type !== 'evidence' && block.block_type !== 'suspect') { %>
+              <input type="hidden" name="body" value="<%= block.body || '' %>" />
+            <% } %>
+
+            <%# IMAGE och AR_OVERLAY: opacitet och rotation %>
+            <% if (block.block_type === 'ar_overlay' || block.block_type === 'image') { %>
+            <div class="form-row">
+              <div class="form-group">
+                <label style="font-size:.75rem">Opacitet (0.05–1.0)</label>
+                <input type="number" name="opacity_default" step="0.05" min="0.05" max="1"
+                       value="<%= block.opacity_default || 1.0 %>"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <div class="form-group">
+                <label style="font-size:.75rem">Rotation</label>
+                <select name="display_rotation" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                  <option value="0"   <%= block.display_rotation == 0   ? 'selected' : '' %>>0°</option>
+                  <option value="90"  <%= block.display_rotation == 90  ? 'selected' : '' %>>90°</option>
+                  <option value="180" <%= block.display_rotation == 180 ? 'selected' : '' %>>180°</option>
+                  <option value="-90" <%= block.display_rotation == -90 ? 'selected' : '' %>>-90°</option>
+                </select>
+              </div>
+            </div>
+            <% } else { %>
+              <input type="hidden" name="opacity_default"  value="<%= block.opacity_default || 1.0 %>" />
+              <input type="hidden" name="display_rotation" value="<%= block.display_rotation || 0 %>" />
+            <% } %>
+
+            <%# VITTNESBLOCK — redigerbara fält %>
+            <% if (block.block_type === 'witness') { %>
+            <div class="form-group">
+              <label style="font-size:.75rem">Namn</label>
+              <input type="text" name="witness_name" value="<%= block.witness_name || '' %>"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Roll / titel</label>
+              <input type="text" name="witness_role" value="<%= block.witness_role || '' %>"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Uttalande</label>
+              <textarea name="witness_statement" rows="4"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.witness_statement || '' %></textarea>
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Tillförlitlighet</label>
+              <select name="witness_reliability" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                <option value="">— Ej angiven —</option>
+                <option value="reliable"   <%= block.witness_reliability === 'reliable'   ? 'selected' : '' %>>✅ Pålitlig</option>
+                <option value="uncertain"  <%= block.witness_reliability === 'uncertain'  ? 'selected' : '' %>>⚠️ Osäker</option>
+                <option value="suspicious" <%= block.witness_reliability === 'suspicious' ? 'selected' : '' %>>🔴 Misstänksam</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Porträttbild</label>
+              <select name="witness_image_id" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                <option value="">— Ingen bild —</option>
+                <% mediaAssets.filter(m => m.type === 'image').forEach(m => { %>
+                  <option value="<%= m.id %>" <%= block.witness_image_id == m.id ? 'selected' : '' %>>
+                    <%= m.original_filename %>
+                  </option>
+                <% }) %>
+              </select>
+              <% if (block.witness_image_path) { %>
+                <img src="<%= mediaBaseUrl %>/<%= block.witness_image_path %>"
+                     style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:.4rem;border:1px solid var(--color-border)" />
+              <% } %>
+            </div>
+            <input type="hidden" name="body" value="<%= block.body || '' %>" />
+            <% } else { %>
+              <input type="hidden" name="witness_name"        value="<%= block.witness_name || '' %>" />
+              <input type="hidden" name="witness_role"        value="<%= block.witness_role || '' %>" />
+              <input type="hidden" name="witness_statement"   value="<%= block.witness_statement || '' %>" />
+              <input type="hidden" name="witness_reliability" value="<%= block.witness_reliability || '' %>" />
+              <input type="hidden" name="witness_image_id"    value="<%= block.witness_image_id || '' %>" />
+            <% } %>
+
+            <%# BEVISBLOCK — redigerbara fält %>
+            <% if (block.block_type === 'evidence') { %>
+            <div class="form-group">
+              <label style="font-size:.75rem">Bevismärkning</label>
+              <input type="text" name="evidence_label" value="<%= block.evidence_label || '' %>"
+                     maxlength="20"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Beskrivning</label>
+              <textarea name="body" rows="3"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.body || '' %></textarea>
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Dold detaljbeskrivning</label>
+              <textarea name="evidence_detail" rows="3"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.evidence_detail || '' %></textarea>
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Bevisbilden</label>
+              <select name="media_asset_id" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                <option value="">— Ingen bild —</option>
+                <% mediaAssets.filter(m => m.type === 'image').forEach(m => { %>
+                  <option value="<%= m.id %>" <%= block.media_asset_id == m.id ? 'selected' : '' %>>
+                    <%= m.original_filename %>
+                  </option>
+                <% }) %>
+              </select>
+              <% if (block.stored_path && block.media_type === 'image') { %>
+                <img src="<%= mediaBaseUrl %>/<%= block.stored_path %>"
+                     style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:.4rem;border:1px solid var(--color-border)" />
+              <% } %>
+            </div>
+            <% } else { %>
+              <input type="hidden" name="evidence_label"  value="<%= block.evidence_label || '' %>" />
+              <input type="hidden" name="evidence_detail" value="<%= block.evidence_detail || '' %>" />
+            <% } %>
+
+            <%# MISSTÄNKTBLOCK — redigerbara fält %>
+            <% if (block.block_type === 'suspect') { %>
+            <div class="form-group">
+              <label style="font-size:.75rem">Namn</label>
+              <input type="text" name="suspect_name" value="<%= block.suspect_name || '' %>"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Roll / titel</label>
+              <input type="text" name="suspect_role" value="<%= block.suspect_role || '' %>"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Motiv</label>
+              <textarea name="suspect_motive" rows="3"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.suspect_motive || '' %></textarea>
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Alibi</label>
+              <textarea name="suspect_alibi" rows="3"
+                style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.85rem"><%= block.suspect_alibi || '' %></textarea>
+            </div>
+            <div class="form-group">
+              <label style="font-size:.75rem">Foto</label>
+              <select name="suspect_image_id" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                <option value="">— Ingen bild —</option>
+                <% mediaAssets.filter(m => m.type === 'image').forEach(m => { %>
+                  <option value="<%= m.id %>" <%= block.suspect_image_id == m.id ? 'selected' : '' %>>
+                    <%= m.original_filename %>
+                  </option>
+                <% }) %>
+              </select>
+              <% if (block.suspect_image_path) { %>
+                <img src="<%= mediaBaseUrl %>/<%= block.suspect_image_path %>"
+                     style="width:60px;height:60px;object-fit:cover;border-radius:6px;margin-top:.4rem;border:1px solid var(--color-border)" />
+              <% } %>
+            </div>
+            <input type="hidden" name="body" value="<%= block.body || '' %>" />
+            <% } else { %>
+              <input type="hidden" name="suspect_name"     value="<%= block.suspect_name || '' %>" />
+              <input type="hidden" name="suspect_role"     value="<%= block.suspect_role || '' %>" />
+              <input type="hidden" name="suspect_motive"   value="<%= block.suspect_motive || '' %>" />
+              <input type="hidden" name="suspect_alibi"    value="<%= block.suspect_alibi || '' %>" />
+              <input type="hidden" name="suspect_image_id" value="<%= block.suspect_image_id || '' %>" />
+            <% } %>
+
+            <%# Bevara alltid media- och frågefält som dolda för övriga typer %>
+            <% if (block.block_type !== 'evidence') { %>
+              <input type="hidden" name="media_asset_id" value="<%= block.media_asset_id || '' %>" />
+            <% } %>
+            <input type="hidden" name="option_a"         value="<%= block.option_a || '' %>" />
+            <input type="hidden" name="option_b"         value="<%= block.option_b || '' %>" />
+            <input type="hidden" name="option_c"         value="<%= block.option_c || '' %>" />
+            <input type="hidden" name="option_d"         value="<%= block.option_d || '' %>" />
+            <input type="hidden" name="correct_option"   value="<%= block.correct_option || '' %>" />
+            <input type="hidden" name="explanation"      value="<%= block.explanation || '' %>" />
+            <input type="hidden" name="points"           value="<%= block.points || 10 %>" />
+            <input type="hidden" name="solution_answer"  value="<%= block.solution_answer || '' %>" />
+            <input type="hidden" name="solution_hint"    value="<%= block.solution_hint || '' %>" />
+            <input type="hidden" name="solution_points"  value="<%= block.solution_points || 0 %>" />
+
+            <button type="submit" class="btn btn-primary btn-sm">Spara</button>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleEditForm(<%= block.id %>)">Avbryt</button>
+          </form>
+        </div>
+      </div>
+      <% }) %>
+    <% } %>
+  </div>
+
+  <!-- Lägg till block (höger panel) -->
+  <div style="position:sticky;top:1rem">
+
+    <!-- Inline mediauppladdning — exakt som originalet -->
+    <div class="card" style="margin-bottom:1rem">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:.25rem">Ladda upp mediafil</h3>
+      <p style="font-size:.75rem;color:var(--color-muted);margin-bottom:.85rem">Filen läggs till i mediabiblioteket och kan sedan väljas nedan.</p>
+      <form method="POST" action="/admin/content/<%= place.id %>/upload"
+            enctype="multipart/form-data" id="inline-upload-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <div class="form-group" style="margin-bottom:.6rem">
+          <input type="file" name="file" id="inline-file-input" accept="image/*,video/*,audio/*"
+                 style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem"
+                 onchange="updateUploadBtn(this)" />
+        </div>
+        <div class="form-group" style="margin-bottom:.75rem">
+          <input type="text" name="alt_text" placeholder="Bildtext / alt-text (valfritt)"
+                 style="width:100%;padding:.35rem .6rem;border:1px solid var(--color-border);border-radius:6px;font-size:.82rem" />
+        </div>
+        <button type="submit" id="inline-upload-btn" class="btn btn-secondary" style="width:100%" disabled>
+          ⬆ Ladda upp
+        </button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3 style="font-size:.95rem;font-weight:600;margin-bottom:1rem">Lägg till innehåll</h3>
+
+      <form method="POST" action="/admin/content/<%= place.id %>" id="add-block-form">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+        <div class="form-group">
+          <label style="font-size:.82rem">Typ</label>
+          <select name="block_type" id="block-type-select" onchange="updateBlockForm(this.value)"
+                  style="width:100%;padding:.45rem;border:1px solid var(--color-border);border-radius:6px">
+            <option value="text">📝 Text</option>
+            <option value="image">🖼️ Bild</option>
+            <option value="video">🎬 Video</option>
+            <option value="audio">🔊 Ljud</option>
+            <option value="ar_overlay">✨ AR-overlay</option>
+            <option value="question">❓ Fråga (tipspromenad)</option>
+            <option value="clue">🔍 Ledtråd (gåta)</option>
+            <option value="solution">✅ Lösning (gåta)</option>
+            <option value="link">🔗 Länk (knapp med URL)</option>
+            <option value="witness">👤 Vittne (mordgåta)</option>
+            <option value="evidence">📁 Bevis (mordgåta)</option>
+            <option value="suspect">🕵️ Misstänkt (mordgåta)</option>
+          </select>
+        </div>
+
+        <!-- Hjälptext per block-typ -->
+        <div id="block-help-text" style="margin-bottom:.75rem;padding:.65rem .75rem;background:var(--color-bg,#f8fafc);border:1px solid var(--color-border,#e2e8f0);border-radius:8px;font-size:.78rem;color:var(--color-muted);line-height:1.5"></div>
+
+        <div class="form-group">
+          <label style="font-size:.82rem">Ordning</label>
+          <input type="number" name="sort_order" value="<%= blocks.length %>" min="0"
+                 style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+        </div>
+
+        <!-- Text/Clue/Link: titel -->
+        <div id="field-title" class="form-group">
+          <label style="font-size:.82rem">Titel <span class="hint">valfritt</span></label>
+          <input type="text" name="title" placeholder="T.ex. Om byggnaden"
+                 style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+        </div>
+        <!-- Text/Clue: brödtext -->
+        <div id="field-body" class="form-group">
+          <label style="font-size:.82rem">Text</label>
+          <textarea name="body" rows="4"
+            style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+            placeholder="Skriv texten här…"></textarea>
+        </div>
+
+        <!-- Media-väljare (bild/video/ljud/AR) -->
+        <div id="field-media" style="display:none">
+          <label style="font-size:.82rem;display:block;margin-bottom:.4rem">Välj mediafil</label>
+          <input type="hidden" name="media_asset_id" id="selected-media-id" />
+          <div id="media-preview" style="margin-bottom:.5rem"></div>
+
+          <% if (mediaAssets.length > 0) { %>
+          <div style="display:flex;gap:.4rem;margin-bottom:.4rem;flex-wrap:wrap">
+            <input type="text" id="picker-search"
+                   placeholder="Sök filnamn…"
+                   oninput="filterPicker()"
+                   style="flex:1;min-width:0;padding:.3rem .55rem;border:1px solid var(--color-border);border-radius:6px;font-size:.78rem" />
+            <div style="display:flex;gap:.25rem">
+              <button type="button" class="picker-filter-btn picker-filter-active" data-ptype="all" onclick="setPickerType('all',this)" style="padding:.25rem .55rem;border-radius:999px;border:1px solid var(--color-border);background:none;font-size:.72rem;cursor:pointer">Alla</button>
+              <button type="button" class="picker-filter-btn" data-ptype="image" onclick="setPickerType('image',this)" style="padding:.25rem .55rem;border-radius:999px;border:1px solid var(--color-border);background:none;font-size:.72rem;cursor:pointer">🖼</button>
+              <button type="button" class="picker-filter-btn" data-ptype="video" onclick="setPickerType('video',this)" style="padding:.25rem .55rem;border-radius:999px;border:1px solid var(--color-border);background:none;font-size:.72rem;cursor:pointer">🎬</button>
+              <button type="button" class="picker-filter-btn" data-ptype="audio" onclick="setPickerType('audio',this)" style="padding:.25rem .55rem;border-radius:999px;border:1px solid var(--color-border);background:none;font-size:.72rem;cursor:pointer">🔊</button>
+            </div>
+          </div>
+          <% } %>
+
+          <div id="media-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.4rem;max-height:220px;overflow-y:auto;border:1px solid var(--color-border);border-radius:8px;padding:.5rem">
+            <% if (mediaAssets.length === 0) { %>
+              <p style="grid-column:1/-1;text-align:center;font-size:.78rem;color:var(--color-muted);padding:.5rem">
+                Inga mediafiler. <a href="/admin/media/upload">Ladda upp →</a>
+              </p>
+            <% } else { %>
+              <% mediaAssets.forEach(ma => { %>
+              <div onclick="selectMedia(<%= ma.id %>, '<%= ma.type %>', '<%= mediaBaseUrl %>/<%= ma.stored_path %>', '<%= ma.original_filename.replace(/'/g, "\\'") %>')"
+                   id="media-item-<%= ma.id %>"
+                   data-ptype="<%= ma.type %>"
+                   data-pname="<%= (ma.original_filename || '').toLowerCase() %>"
+                   style="cursor:pointer;border:2px solid var(--color-border,#e2e8f0);border-radius:6px;overflow:hidden;transition:border-color .15s">
+                <% if (ma.type === 'image') { %>
+                  <img src="<%= mediaBaseUrl %>/<%= ma.stored_path %>" style="width:100%;height:50px;object-fit:cover" />
+                <% } else { %>
+                  <div style="height:50px;background:#1e293b;display:flex;align-items:center;justify-content:center;font-size:1.3rem">
+                    <%= ma.type === 'video' ? '🎬' : '🔊' %>
+                  </div>
+                <% } %>
+                <div style="padding:.2rem .3rem;font-size:.65rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><%= ma.original_filename %></div>
+              </div>
+              <% }) %>
+              <div id="picker-no-results" style="display:none;grid-column:1/-1;text-align:center;padding:.75rem;font-size:.78rem;color:var(--color-muted)">Inga filer matchar sökningen.</div>
+            <% } %>
+          </div>
+          <div id="field-ar-settings" style="display:none;margin-top:.75rem">
+            <div class="form-row">
+              <div>
+                <label style="font-size:.75rem">Opacitet</label>
+                <input type="number" name="opacity_default" value="1.0" step="0.05" min="0.05" max="1"
+                       style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+              </div>
+              <div>
+                <label style="font-size:.75rem">Rotation</label>
+                <select name="display_rotation" style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px">
+                  <option value="0">0°</option><option value="90">90°</option>
+                  <option value="180">180°</option><option value="-90">-90°</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Fråga -->
+        <div id="field-question" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Frågetext <span class="required">*</span></label>
+            <textarea name="question_body" rows="2"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="Vad heter…?"></textarea>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-bottom:.5rem">
+            <% ['a','b','c','d'].forEach(opt => { %>
+            <div>
+              <label style="font-size:.72rem;display:flex;align-items:center;gap:.3rem">
+                <input type="radio" name="correct_option" value="<%= opt %>" />
+                Alt. <%= opt.toUpperCase() %> (rätt?)
+              </label>
+              <input type="text" name="option_<%= opt %>"
+                     placeholder="<%= opt === 'c' || opt === 'd' ? 'Valfritt' : '' %>"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.82rem" />
+            </div>
+            <% }) %>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label style="font-size:.75rem">Förklaring</label>
+              <input type="text" name="explanation" placeholder="Valfritt"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px;font-size:.82rem" />
+            </div>
+            <div class="form-group" style="flex:0 0 80px">
+              <label style="font-size:.75rem">Poäng</label>
+              <input type="number" name="points" value="10" min="0"
+                     style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+            </div>
+          </div>
+        </div>
+
+        <!-- Ledtråd -->
+        <div id="field-clue" style="display:none">
+          <div class="form-group">
+            <label style="display:flex;align-items:center;gap:.4rem;font-size:.82rem;cursor:pointer">
+              <input type="checkbox" name="is_hidden" value="1" />
+              Dold — visas bara när användaren begär ledtråd
+            </label>
+          </div>
+        </div>
+
+        <!-- Lösning -->
+        <div id="field-solution" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Rätt svar (fritext)</label>
+            <input type="text" name="solution_answer" placeholder="Det rätta svaret"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Ledtråd</label>
+            <textarea name="solution_hint" rows="2" placeholder="Hint om användaren fastnar"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.75rem">Poäng för korrekt svar</label>
+            <input type="number" name="solution_points" value="10" min="0"
+                   style="width:100%;padding:.3rem;border:1px solid var(--color-border);border-radius:5px" />
+          </div>
+        </div>
+
+        <!-- Länk -->
+        <div id="field-link" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">URL <span class="required">*</span></label>
+            <input type="url" name="cta_url" placeholder="https://exempel.se"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Knapptext <span class="hint">valfritt</span></label>
+            <input type="text" name="cta_label" placeholder="T.ex. Läs mer, Öppna karta"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem" />
+            <p style="font-size:.73rem;color:var(--color-muted);margin-top:.25rem">Lämna tomt för att visa URL:en som knapptext.</p>
+          </div>
+        </div>
+
+        <!-- Vittne -->
+        <div id="field-witness" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Namn <span class="required">*</span></label>
+            <input type="text" name="witness_name" placeholder="T.ex. Ingrid Holm"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Roll / titel</label>
+            <input type="text" name="witness_role" placeholder="T.ex. Grannfru, plan 3"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Uttalande <span class="required">*</span></label>
+            <textarea name="witness_statement" rows="4"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="Skriv vad vittnet säger, i första person…"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Tillförlitlighet</label>
+            <select name="witness_reliability" style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px">
+              <option value="">— Ej angiven —</option>
+              <option value="reliable">✅ Pålitlig</option>
+              <option value="uncertain">⚠️ Osäker</option>
+              <option value="suspicious">🔴 Misstänksam</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Porträttbild <span class="hint">valfritt</span></label>
+            <select name="witness_image_id" style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px">
+              <option value="">— Ingen bild —</option>
+              <% mediaAssets.filter(m => m.type === 'image').forEach(m => { %>
+                <option value="<%= m.id %>"><%= m.original_filename %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <!-- Bevis -->
+        <div id="field-evidence" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Bevismärkning <span class="required">*</span></label>
+            <input type="text" name="evidence_label" placeholder="T.ex. BEVIS A eller FYND 3"
+                   maxlength="20"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+            <p style="font-size:.73rem;color:var(--color-muted);margin-top:.25rem">Max 20 tecken. Visas i bevissamlingen.</p>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Titel <span class="hint">namn på beviset</span></label>
+            <input type="text" name="title" placeholder="T.ex. Sönderrivet brev"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Beskrivning</label>
+            <textarea name="body" rows="3"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="Beskriv vad beviset är och var det hittades…"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Dold detaljbeskrivning <span class="hint">valfritt</span></label>
+            <textarea name="evidence_detail" rows="3"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="En detalj bakom 'Granska närmare'-knappen…"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Bevisbilden <span class="hint">valfritt</span></label>
+            <select name="media_asset_id" style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px">
+              <option value="">— Ingen bild —</option>
+              <% mediaAssets.filter(m => m.type === 'image').forEach(m => { %>
+                <option value="<%= m.id %>"><%= m.original_filename %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <!-- Misstänkt -->
+        <div id="field-suspect" style="display:none">
+          <div class="form-group">
+            <label style="font-size:.82rem">Namn <span class="required">*</span></label>
+            <input type="text" name="suspect_name" placeholder="T.ex. Elena Rossi"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Roll / titel <span class="hint">valfritt</span></label>
+            <input type="text" name="suspect_role" placeholder="T.ex. Affärskvinna, Karlskoga"
+                   style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px" />
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Motiv <span class="hint">valfritt</span></label>
+            <textarea name="suspect_motive" rows="3"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="Varför kan den här personen vara skyldig?"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Alibi <span class="hint">valfritt</span></label>
+            <textarea name="suspect_alibi" rows="3"
+              style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px;font-size:.85rem"
+              placeholder="Vad säger personen att de gjorde vid tidpunkten?"></textarea>
+          </div>
+          <div class="form-group">
+            <label style="font-size:.82rem">Foto <span class="hint">valfritt</span></label>
+            <select name="suspect_image_id" style="width:100%;padding:.4rem;border:1px solid var(--color-border);border-radius:6px">
+              <option value="">— Ingen bild —</option>
+              <% mediaAssets.filter(m => m.type === 'image').forEach(m => { %>
+                <option value="<%= m.id %>"><%= m.original_filename %></option>
+              <% }) %>
+            </select>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:.75rem">
+          + Lägg till block
+        </button>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Mediaväljare: sökning och typfilter ──────────────────────
+var activePickerType = 'all';
+
+function setPickerType(type, btn) {
+  activePickerType = type;
+  document.querySelectorAll('.picker-filter-btn').forEach(function(b) {
+    b.classList.remove('picker-filter-active');
+    b.style.background = 'none';
+    b.style.color = '';
+  });
+  btn.classList.add('picker-filter-active');
+  btn.style.background = '#3b82f6';
+  btn.style.color = '#fff';
+  filterPicker();
+}
+
+function filterPicker() {
+  var searchEl = document.getElementById('picker-search');
+  var q = searchEl ? searchEl.value.toLowerCase().trim() : '';
+  var items = document.querySelectorAll('#media-grid [data-ptype]');
+  var visible = 0;
+  items.forEach(function(item) {
+    var typeMatch = activePickerType === 'all' || item.dataset.ptype === activePickerType;
+    var nameMatch = !q || (item.dataset.pname || '').includes(q);
+    if (typeMatch && nameMatch) {
+      item.style.display = '';
+      visible++;
+    } else {
+      item.style.display = 'none';
+    }
+  });
+  var noRes = document.getElementById('picker-no-results');
+  if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
+}
+
+function openCopyModal() {
+  const modal = document.getElementById('copy-modal');
+  if (modal) modal.showModal();
+}
+
+function closeCopyModal() {
+  const modal = document.getElementById('copy-modal');
+  if (modal) modal.close();
+}
+
+const copyModal = document.getElementById('copy-modal');
+if (copyModal) {
+  copyModal.addEventListener('click', (e) => {
+    if (e.target === copyModal) copyModal.close();
+  });
+}
+
+// ─── Inline uppladdning ────────────────────────────────────────
+function updateUploadBtn(input) {
+  const btn = document.getElementById('inline-upload-btn');
+  if (btn) btn.disabled = !input.files || input.files.length === 0;
+}
+
+// ─── Redigera block — med varning om publicerat ───────────────
+function toggleEditForm(id, isPublished) {
+  const el = document.getElementById('edit-' + id);
+  if (!el) return;
+  const isOpen = el.style.display !== 'none';
+  if (isOpen) {
+    el.style.display = 'none';
+    return;
+  }
+  // Öppna: visa varning om publicerat och admin inte redan bekräftat
+  if (isPublished && !el.dataset.confirmed) {
+    const ok = confirm(
+      'OBS: Det här uppdraget är publicerat och aktiva användare kan se ändringarna direkt.\n\n' +
+      'Vill du ändå redigera blocket?'
+    );
+    if (!ok) return;
+    el.dataset.confirmed = '1';
+  }
+  el.style.display = 'block';
+}
+
+function selectMedia(id, type, url, name) {
+  document.getElementById('selected-media-id').value = id;
+  document.querySelectorAll('[id^="media-item-"]').forEach(el => el.style.borderColor = 'var(--color-border,#e2e8f0)');
+  const el = document.getElementById('media-item-' + id);
+  if (el) el.style.borderColor = '#3b82f6';
+  const preview = document.getElementById('media-preview');
+  if (type === 'image') {
+    preview.innerHTML = '<img src="'+url+'" style="height:50px;border-radius:5px;margin-bottom:.3rem" /> <span style="font-size:.75rem">'+name+'</span>';
+  } else {
+    preview.innerHTML = '<span style="font-size:.85rem">'+(type==='video'?'🎬':'🔊')+' '+name+'</span>';
+  }
+}
+
+const blockHelpTexts = {
+  text: {
+    desc: 'Fritext som visas när platsen är upplåst. Använd för historik, beskrivningar eller välkomsttexter.',
+    example: 'Exempel: "Folkets hus byggdes 1923 och var länge en central mötesplats i Karlskoga."'
+  },
+  image: {
+    desc: 'En bild från mediabiblioteket. Visas i platsvyn när användaren öppnar platsen.',
+    example: 'Exempel: ett historiskt foto, en karta eller en illustration av platsen.'
+  },
+  video: {
+    desc: 'En video från mediabiblioteket. Användaren kan spela upp den direkt i appen.',
+    example: 'Exempel: ett filmklipp, en intervju eller en dokumentärsekvens om platsen.'
+  },
+  audio: {
+    desc: 'En ljudfil från mediabiblioteket. Användaren kan lyssna direkt i appen.',
+    example: 'Exempel: en berättarröst, ambient ljud från epoken eller musik.'
+  },
+  ar_overlay: {
+    desc: '⚠️ AR-overlay fungerar endast i den native iOS-appen, inte i PWA-versionen (webbläsaren). Blocket sparas och är förberett för framtida användning. Bilden läggs som ett genomskinligt lager över kameravyn när användaren är på plats.',
+    example: 'Exempel: ett historiskt foto av byggnaden som syns när man håller telefonen mot platsen.',
+    warning: true
+  },
+  question: {
+    desc: 'En flervalsfråga med upp till fyra svarsalternativ. Används i tipspromenader. Du anger vilket alternativ som är rätt och hur många poäng rätt svar ger.',
+    example: 'Exempel: "Vilket år byggdes Folkets hus?" med alternativen 1912, 1923, 1935 och 1948.'
+  },
+  clue: {
+    desc: 'En ledtråd som användaren kan välja att öppna. Används i mordgåtor och skattjakter. Markera "Dold" om ledtråden ska vara dold tills användaren aktivt begär den.',
+    example: 'Exempel: "Titta på skylten till höger om entrén — där finns ett årtal."'
+  },
+  solution: {
+    desc: 'Ett fritextsvar som användaren skriver in och som jämförs med rätt svar. Används i mordgåtor och skattjakter. Du anger rätt svar, en valfri ledtråd och poäng för korrekt svar.',
+    example: 'Exempel: Fråga "Vem är mördaren?" — rätt svar: "Viktor Holm".'
+  },
+  link: {
+    desc: 'En klickbar knapp som öppnar en extern länk. Visas som en tydlig knapp i appen. Passar för Wikipedia-artiklar, kartor, officiella webbplatser eller annat kompletterande material.',
+    example: 'Exempel: "Läs mer på Wikipedia" → https://sv.wikipedia.org/wiki/Karlskoga'
+  },
+  witness: {
+    desc: 'Ett vittnesmål från en fiktiv person i mordgåtan. Spelaren ser namn, roll och ett uttalande med en tillförlitlighetsmarkering.',
+    example: 'Exempel: Ingrid Holm, grannfru — "Jag hörde ett högt ljud vid halv elva, men det är inte mitt bord att lägga sig i andras affärer."'
+  },
+  evidence: {
+    desc: 'Ett fysiskt fynd som spelaren samlar i sin bevissamling. Kan ha en synlig beskrivning och en dold detaljbeskrivning som kräver noggrannare granskning.',
+    example: 'Exempel: BEVIS A — "Sönderrivet brev" — Hittat på golvet intill fönstret.'
+  },
+  suspect: {
+    desc: 'En misstänkt person i mordgåtan. Spelaren ser namn, roll, motiv och alibi i sin misstänktalista. Används för att bygga upp ett persongalleri i mordgåtan.',
+    example: 'Exempel: Elena Rossi, affärskvinna — Motiv: arv. Alibi: hävdar att hon var på hotellet.'
+  }
+};
+
+function updateBlockForm(type) {
+  const showBody     = ['text','clue'].includes(type);
+  const showMedia    = ['image','video','audio','ar_overlay'].includes(type);
+  const showQuestion = type === 'question';
+  const showClue     = type === 'clue';
+  const showSolution = type === 'solution';
+  const showAR       = type === 'ar_overlay';
+  const showLink     = type === 'link';
+  const showWitness  = type === 'witness';
+  const showEvidence = type === 'evidence';
+  const showSuspect  = type === 'suspect';
+
+  document.getElementById('field-title').style.display    = (showBody || showClue || showSolution || showLink) ? '' : 'none';
+  document.getElementById('field-body').style.display     = showBody    ? '' : 'none';
+  document.getElementById('field-media').style.display    = showMedia   ? '' : 'none';
+  document.getElementById('field-question').style.display = showQuestion ? '' : 'none';
+  document.getElementById('field-clue').style.display     = showClue    ? '' : 'none';
+  document.getElementById('field-solution').style.display = showSolution ? '' : 'none';
+  document.getElementById('field-ar-settings').style.display = showAR   ? '' : 'none';
+  document.getElementById('field-link').style.display     = showLink    ? '' : 'none';
+  document.getElementById('field-witness').style.display  = showWitness ? '' : 'none';
+  document.getElementById('field-evidence').style.display = showEvidence ? '' : 'none';
+  document.getElementById('field-suspect').style.display  = showSuspect ? '' : 'none';
+
+  const helpEl = document.getElementById('block-help-text');
+  const help = blockHelpTexts[type];
+  if (help && helpEl) {
+    const warningStyle = help.warning
+      ? 'background:#fef3c7;border-color:#fcd34d;color:#92400e;'
+      : '';
+    helpEl.style.cssText = `margin-bottom:.75rem;padding:.65rem .75rem;border:1px solid var(--color-border,#e2e8f0);border-radius:8px;font-size:.78rem;line-height:1.5;${warningStyle}`;
+    helpEl.innerHTML = `<div style="margin-bottom:.3rem">${help.desc}</div><div style="opacity:.8;font-style:italic">${help.example}</div>`;
+  }
+}
+updateBlockForm('text');
+
+// ─── Drag & Drop (SortableJS) ──────────────────────────────────
+let _sortableInstance = null;
+let _originalOrder    = [];
+
+function _getBlockCards() {
+  return Array.from(document.querySelectorAll('.block-card[data-block-id]'));
+}
+
+function initSortable() {
+  const cards = _getBlockCards();
+  if (!cards.length || typeof Sortable === 'undefined') return;
+  const container = cards[0].parentElement;
+  _originalOrder  = cards.map(el => el.dataset.blockId);
+
+  if (_sortableInstance) _sortableInstance.destroy();
+
+  _sortableInstance = Sortable.create(container, {
+    handle:     '.drag-handle',
+    animation:  160,
+    ghostClass: 'sortable-ghost',
+    dragClass:  'sortable-drag',
+    onEnd() {
+      const newOrder = _getBlockCards().map(el => el.dataset.blockId);
+      const changed  = newOrder.some((id, i) => id !== _originalOrder[i]);
+      const bar      = document.getElementById('reorder-bar');
+      if (bar) bar.style.display = changed ? 'flex' : 'none';
+    }
+  });
+}
+
+async function saveBlockOrder() {
+  const btn   = document.getElementById('save-order-btn');
+  const order = _getBlockCards().map(el => el.dataset.blockId);
+  btn.disabled    = true;
+  btn.textContent = 'Sparar...';
+
+  try {
+    const res = await fetch('/admin/content/<%= place.id %>/reorder', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ _csrf: '<%= csrfToken %>', order })
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      throw new Error(data.error || 'Serverfel');
+    }
+    _originalOrder = order;
+    document.getElementById('reorder-bar').style.display = 'none';
+    // Uppdatera #-numren i DOM
+    _getBlockCards().forEach((el, i) => {
+      const badge = el.querySelector('.sort-order-badge');
+      if (badge) badge.textContent = '#' + (i + 1);
+    });
+  } catch (err) {
+    alert('Kunde inte spara ordning: ' + err.message);
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Spara ordning';
+  }
+}
+
+function cancelReorder() {
+  const cards = _getBlockCards();
+  if (!cards.length) return;
+  const container = cards[0].parentElement;
+  _originalOrder.forEach(id => {
+    const el = container.querySelector('[data-block-id="' + id + '"]');
+    if (el) container.appendChild(el);
+  });
+  document.getElementById('reorder-bar').style.display = 'none';
+}
+
+// Ladda SortableJS från CDN och initiera
+(function () {
+  if (typeof Sortable !== 'undefined') { initSortable(); return; }
+  const script    = document.createElement('script');
+  script.src      = 'https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js';
+  script.onload   = initSortable;
+  script.onerror  = () => console.warn('[SpotOn] Sortable.js kunde inte laddas — drag & drop inaktiverat.');
+  document.head.appendChild(script);
+})();
+</script>
+
+<%- include('../../partials/footer') %>

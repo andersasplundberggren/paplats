@@ -1,0 +1,38 @@
+<%- include('../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Dashboard</h1>
+  <% if (locals.adminName) { %>
+    <p class="text-muted">Inloggad som <%= adminName %></p>
+  <% } %>
+</div>
+
+<div class="stats-grid">
+  <a href="/admin/places?status=published" class="stat-card">
+    <div class="stat-number"><%= stats.published %></div>
+    <div class="stat-label">Publicerade platser</div>
+  </a>
+  <a href="/admin/places?status=draft" class="stat-card">
+    <div class="stat-number"><%= stats.draft %></div>
+    <div class="stat-label">Utkast</div>
+  </a>
+  <a href="/admin/media?type=image" class="stat-card">
+    <div class="stat-number"><%= stats.images %></div>
+    <div class="stat-label">Bilder</div>
+  </a>
+  <a href="/admin/media?type=video" class="stat-card">
+    <div class="stat-number"><%= stats.videos %></div>
+    <div class="stat-label">Videor</div>
+  </a>
+</div>
+
+<div class="card" style="margin-top:2rem">
+  <h2 class="card-title">Snabbval</h2>
+  <div class="action-row">
+    <a href="/admin/places/new"   class="btn btn-primary">+ Ny plats</a>
+    <a href="/admin/media/upload" class="btn btn-secondary">+ Ladda upp media</a>
+    <a href="/api/v1/places"      class="btn btn-ghost" target="_blank">API-förhandsgranskning ↗</a>
+  </div>
+</div>
+
+<%- include('../partials/footer') %>

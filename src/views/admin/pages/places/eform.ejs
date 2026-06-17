@@ -1,0 +1,248 @@
+<%
+  const isEdit  = place !== null;
+  const fd      = (formData && Object.keys(formData).length) ? formData : (place || {});
+  const val     = (key) => fd[key] !== null && fd[key] !== undefined ? fd[key] : '';
+%>
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1><%= isEdit ? 'Edit place' : 'New place' %></h1>
+  <% if (isEdit) { %>
+    <div class="header-actions">
+      <a href="/admin/places/<%= place.id %>" class="btn btn-ghost">Preview</a>
+      <form method="POST" action="/admin/places/<%= place.id %>/publish" style="display:inline">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <button type="submit" class="btn <%= place.status === 'published' ? 'btn-ghost' : 'btn-primary' %>">
+          <%= place.status === 'published' ? 'Unpublish' : 'Publish' %>
+        </button>
+      </form>
+    </div>
+  <% } %>
+</div>
+
+<form method="POST" action="<%= isEdit ? '/admin/places/' + place.id : '/admin/places' %>" class="form-card">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+  <section class="form-section">
+    <h2 class="section-title">Basic info</h2>
+    <div class="form-group">
+      <label for="title">Title <span class="required">*</span></label>
+      <input type="text" id="title" name="title" value="<%= val('title') %>" required maxlength="255" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="status">Status <span class="required">*</span></label>
+        <select id="status" name="status">
+          <option value="draft"     <%= val('status') !== 'published' ? 'selected' : '' %>>Draft</option>
+          <option value="published" <%= val('status') === 'published' ? 'selected' : '' %>>Published</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="category_id">Category</label>
+        <select id="category_id" name="category_id">
+          <option value="">— None —</option>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat.id %>" <%= val('category_id') == cat.id ? 'selected' : '' %>><%= cat.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="sort_order">Sort order</label>
+        <input type="number" id="sort_order" name="sort_order" value="<%= val('sort_order') || 0 %>" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="short_description">Short description</label>
+      <textarea id="short_description" name="short_description" rows="2"><%= val('short_description') %></textarea>
+    </div>
+    <div class="form-group">
+      <label for="long_description">Long description</label>
+      <textarea id="long_description" name="long_description" rows="6"><%= val('long_description') %></textarea>
+    </div>
+  </section>
+
+  <section class="form-section">
+    <h2 class="section-title">Location</h2>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="latitude">Latitude <span class="required">*</span></label>
+        <input type="number" id="latitude" name="latitude" step="0.00000001" value="<%= val('latitude') %>" required min="-90" max="90" />
+      </div>
+      <div class="form-group">
+        <label for="longitude">Longitude <span class="required">*</span></label>
+        <input type="number" id="longitude" name="longitude" step="0.00000001" value="<%= val('longitude') %>" required min="-180" max="180" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label for="activation_radius_meters">Activation radius (m) <span class="required">*</span>
+          <span class="hint">How close the user must be to unlock</span>
+        </label>
+        <input type="number" id="activation_radius_meters" name="activation_radius_meters" value="<%= val('activation_radius_meters') || 50 %>" required min="1" max="10000" />
+      </div>
+      <div class="form-group">
+        <label for="preferred_distance_meters">Preferred distance (m)
+          <span class="hint">Ideal standing distance for AR</span>
+        </label>
+        <input type="number" id="preferred_distance_meters" name="preferred_distance_meters" value="<%= val('preferred_distance_meters') %>" min="1" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label for="preferred_bearing_degrees">Preferred bearing (°)
+        <span class="hint">Compass direction (0–360). Leave blank if not needed.</span>
+      </label>
+      <input type="number" id="preferred_bearing_degrees" name="preferred_bearing_degrees" step="0.01" value="<%= val('preferred_bearing_degrees') %>" min="0" max="360" placeholder="e.g. 270 = face West" />
+    </div>
+    <% if (isEdit) { %>
+      <a href="https://www.openstreetmap.org/?mlat=<%= place.latitude %>&mlon=<%= place.longitude %>#map=17/<%= place.latitude %>/<%= place.longitude %>"
+         target="_blank" rel="noreferrer" class="btn btn-ghost btn-sm">View on OpenStreetMap ↗</a>
+    <% } %>
+  </section>
+
+  <div class="form-actions">
+    <button type="submit" class="btn btn-primary"><%= isEdit ? 'Save changes' : 'Create place' %></button>
+    <a href="/admin/places" class="btn btn-ghost">Cancel</a>
+    <% if (isEdit) { %>
+      <button type="button" class="btn btn-danger btn-right"
+        onclick="confirmDelete('/admin/places/<%= place.id %>/delete', '<%= place.title.replace(/'/g, '\\\'') %>', this)">
+        Delete place
+      </button>
+    <% } %>
+  </div>
+</form>
+
+<% if (isEdit) { %>
+<div class="card" style="margin-top:2rem">
+  <h2 class="card-title">Attached media (<%= place.media.length %>)</h2>
+
+  <% if (place.media.length === 0) { %>
+    <p class="text-muted">No media attached yet.</p>
+  <% } else { %>
+    <div class="media-grid">
+      <% place.media.forEach(m => { %>
+      <div class="media-thumb-card">
+
+        <%# --- Thumbnail based on type --- %>
+        <% if (m.type === 'image') { %>
+          <img src="<%= mediaBaseUrl %>/<%= m.stored_path %>" alt="<%= m.alt_text || m.original_filename %>" class="media-thumb" />
+        <% } else if (m.type === 'audio') { %>
+          <div class="media-thumb" style="background:#1a1a18;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem">
+            <span style="font-size:2rem;color:#fff">♪</span>
+            <span style="font-size:.75rem;color:#aaa"><%= m.original_filename.length > 20 ? m.original_filename.substring(0,18)+'…' : m.original_filename %></span>
+          </div>
+        <% } else { %>
+          <div class="media-thumb video-placeholder">▶ Video</div>
+        <% } %>
+
+        <div class="media-thumb-meta">
+          <span class="badge <%=
+            m.usage_type === 'ar_overlay' ? 'badge-purple' :
+            m.usage_type === 'hero'       ? 'badge-orange' :
+            m.type       === 'audio'      ? 'badge-green'  : 'badge-blue'
+          %>"><%= m.usage_type %></span>
+          <span class="badge badge-gray"><%= m.type %></span>
+        </div>
+
+        <%# --- Edit form --- %>
+        <form method="POST" action="/admin/places/<%= place.id %>/media/<%= m.pm_id %>/order" style="margin-top:.5rem">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+
+          <div style="margin-bottom:.35rem">
+            <label style="font-size:.75rem;color:var(--color-muted)">Usage type</label>
+            <select name="usage_type" class="input-select input-select-sm" style="width:100%">
+              <option value="gallery"    <%= m.usage_type === 'gallery'    ? 'selected' : '' %>>gallery</option>
+              <option value="hero"       <%= m.usage_type === 'hero'       ? 'selected' : '' %>>hero</option>
+              <option value="ar_overlay" <%= m.usage_type === 'ar_overlay' ? 'selected' : '' %>>ar_overlay</option>
+            </select>
+          </div>
+
+          <div style="display:flex;gap:.35rem;margin-bottom:.35rem">
+            <div style="flex:1">
+              <label style="font-size:.75rem;color:var(--color-muted)">Order</label>
+              <input type="number" name="display_order" value="<%= m.display_order %>" class="input-text input-text-sm" style="width:100%" />
+            </div>
+            <div style="flex:1">
+              <label style="font-size:.75rem;color:var(--color-muted)">Opacity</label>
+              <input type="number" name="opacity_default" value="<%= m.opacity_default %>" step="0.05" min="0" max="1" class="input-text input-text-sm" style="width:100%" />
+            </div>
+          </div>
+
+          <% if (m.type === 'image') { %>
+          <div style="margin-bottom:.35rem">
+            <label style="font-size:.75rem;color:var(--color-muted)">Rotation</label>
+            <select name="display_rotation" class="input-select input-select-sm" style="width:100%">
+              <option value="0"   <%= (!m.display_rotation || m.display_rotation == 0)  ? 'selected' : '' %>>0° — liggande</option>
+              <option value="90"  <%= m.display_rotation == 90  ? 'selected' : '' %>>90° — stående</option>
+              <option value="-90" <%= m.display_rotation == -90 ? 'selected' : '' %>>-90° — stående omvänt</option>
+              <option value="180" <%= m.display_rotation == 180 ? 'selected' : '' %>>180° — upp-och-ned</option>
+            </select>
+          </div>
+          <% } else { %>
+            <input type="hidden" name="display_rotation" value="<%= m.display_rotation || 0 %>" />
+          <% } %>
+
+          <button type="submit" class="btn btn-xs btn-secondary" style="width:100%">Spara</button>
+        </form>
+
+        <form method="POST" action="/admin/places/<%= place.id %>/media/<%= m.pm_id %>/delete" style="margin-top:4px">
+          <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+          <button type="submit" class="btn btn-xs btn-danger" style="width:100%"
+            onclick="return confirm('Ta bort koppling för <%= m.original_filename.replace(/'/g,'\\\'') %>?')">
+            Unlink
+          </button>
+        </form>
+
+      </div>
+      <% }) %>
+    </div>
+  <% } %>
+
+  <details class="attach-media-details" style="margin-top:1.5rem">
+    <summary class="btn btn-secondary btn-sm">Attach existing media</summary>
+    <form method="POST" action="/admin/places/<%= place.id %>/media" class="attach-media-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-row" style="margin-top:1rem">
+        <div class="form-group">
+          <label>Media asset ID</label>
+          <input type="number" name="media_id" required min="1" placeholder="ID from media list" />
+        </div>
+        <div class="form-group">
+          <label>Usage type</label>
+          <select name="usage_type">
+            <option value="gallery">gallery</option>
+            <option value="hero">hero</option>
+            <option value="ar_overlay">ar_overlay</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Display order</label>
+          <input type="number" name="display_order" value="0" />
+        </div>
+        <div class="form-group">
+          <label>Opacity (0–1)</label>
+          <input type="number" name="opacity_default" value="1.0" step="0.05" min="0" max="1" />
+        </div>
+        <div class="form-group">
+          <label>Rotation (bilder)</label>
+          <select name="display_rotation">
+            <option value="0">0° — liggande</option>
+            <option value="90">90° — stående</option>
+            <option value="-90">-90° — stående omvänt</option>
+            <option value="180">180° — upp-och-ned</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.5rem">
+        <button type="submit" class="btn btn-primary btn-sm">Attach</button>
+        <a href="/admin/media" class="btn btn-ghost btn-sm" target="_blank">Browse media ↗</a>
+      </div>
+    </form>
+  </details>
+</div>
+<% } %>
+
+<form id="delete-form" method="POST" style="display:none">
+  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+</form>
+
+<%- include('../../partials/footer') %>

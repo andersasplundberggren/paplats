@@ -1,0 +1,42 @@
+{
+  "name": "geoexp-backend",
+  "version": "1.0.0",
+  "description": "GeoExp self hosted location based digital experiences backend",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "create-admin": "node scripts/createAdmin.js",
+    "cleanup:sessions:dry": "node scripts/cleanupUserSessions.js",
+    "cleanup:sessions:apply": "node scripts/cleanupUserSessions.js --apply",
+    "cleanup:sessions:verbose": "node scripts/cleanupUserSessions.js --verbose",
+    "cleanup:assignment:dry": "node scripts/cleanupAssignmentSessions.js",
+    "cleanup:assignment:apply": "node scripts/cleanupAssignmentSessions.js --apply"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-flash": "^0.1.1",
+    "connect-session-knex": "^3.0.1",
+    "cookie-parser": "^1.4.7",
+    "csrf": "^3.1.0",
+    "csurf": "^1.11.0",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-mysql-session": "^3.0.3",
+    "express-rate-limit": "^7.3.1",
+    "express-session": "^1.18.0",
+    "express-validator": "^7.1.0",
+    "helmet": "^7.1.0",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.10.1",
+    "sharp": "^0.33.4",
+    "slugify": "^1.6.8"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  }
+}

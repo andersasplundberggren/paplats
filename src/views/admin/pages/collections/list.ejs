@@ -1,0 +1,78 @@
+<%- include('../../partials/header', { title, csrfToken }) %>
+
+<div class="page-header">
+  <h1>Samlingar — Upptäck</h1>
+  <div style="display:flex;gap:.5rem">
+    <a href="/admin/places" class="btn btn-ghost">Platser</a>
+  </div>
+</div>
+
+<div class="content-columns">
+  <div class="card">
+    <h2 class="card-title">Befintliga samlingar</h2>
+    <% if (collections.length === 0) { %>
+      <p class="text-muted">Inga samlingar skapade ännu. En samling är en grupp platser som användaren låser upp med en kod i appen.</p>
+    <% } else { %>
+    <table class="data-table">
+      <thead>
+        <tr><th>Titel</th><th>Kod</th><th>Status</th><th>Platser</th><th>Skapad</th><th>Åtgärder</th></tr>
+      </thead>
+      <tbody>
+        <% collections.forEach(c => { %>
+        <tr>
+          <td><strong><a href="/admin/collections/<%= c.id %>/places"><%= c.title %></a></strong></td>
+          <td><code style="font-weight:700;letter-spacing:.05em"><%= c.access_code %></code></td>
+          <td><span class="badge <%= c.status === 'published' ? 'badge-green' : 'badge-gray' %>"><%= c.status === 'published' ? 'Publicerad' : 'Utkast' %></span></td>
+          <td><%= c.place_count %></td>
+          <td><%= new Date(c.created_at).toLocaleDateString('sv-SE') %></td>
+          <td class="action-cell">
+            <a href="/admin/collections/<%= c.id %>/places" class="btn btn-xs btn-secondary">Hantera platser</a>
+            <form method="POST" action="/admin/collections/<%= c.id %>/delete" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn btn-xs btn-danger"
+                onclick="return confirm('Radera samlingen <%= c.title %>?')">Radera</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+    <% } %>
+  </div>
+
+  <div class="card">
+    <h2 class="card-title">Ny samling</h2>
+    <p style="font-size:.82rem;color:var(--color-muted);margin-bottom:1rem">
+      En samling grupperar platser under en gemensam kod. Användaren anger koden i appen och ser en karta med just dessa platser.
+    </p>
+    <form method="POST" action="/admin/collections">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <div class="form-group">
+        <label>Titel <span class="required">*</span></label>
+        <input type="text" name="title" required maxlength="255" placeholder="T.ex. Karlskoga 40-tal" />
+      </div>
+      <div class="form-group">
+        <label>Beskrivning</label>
+        <textarea name="description" rows="2" placeholder="Kort beskrivning som visas i appen"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Åtkomstkod <span class="required">*</span>
+          <span class="hint">Unik kod användaren anger. T.ex. KARLSKOGA40</span>
+        </label>
+        <input type="text" name="access_code" required maxlength="20"
+               style="text-transform:uppercase;font-weight:700;letter-spacing:.05em"
+               placeholder="T.ex. KARLSKOGA40" />
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select name="status">
+          <option value="draft">Draft — ej synlig i appen</option>
+          <option value="published">Publicerad</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary">Skapa samling</button>
+    </form>
+  </div>
+</div>
+
+<%- include('../../partials/footer') %>
