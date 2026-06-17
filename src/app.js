@@ -41,11 +41,11 @@ const adminCsp = helmet.contentSecurityPolicy({
     defaultSrc: ["'self'"],
     // Admin-vyerna innehåller inline-script/-style; tillåts tills
     // de flyttats till externa filer. Strama åt när det är gjort.
-    scriptSrc:  ["'self'", "'unsafe-inline'"],
-    styleSrc:   ["'self'", "'unsafe-inline'"],
-    imgSrc:     ["'self'", 'data:', 'blob:'],
+    scriptSrc:  ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+    styleSrc:   ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+    imgSrc:     ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
     mediaSrc:   ["'self'", 'blob:'],
-    connectSrc: ["'self'"],
+    connectSrc: ["'self'", 'https://nominatim.openstreetmap.org'],
     frameAncestors: ["'self'"],
   },
 });
