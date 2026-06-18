@@ -20,3 +20,4 @@ jobs:
             cd ~/api.pixelworks.se/geoexp
             git pull origin main
             touch tmp/restart.txt
+            rsync -a --delete webapp/pwa/ ~/paplats.pixelworks.se/
